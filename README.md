@@ -1,36 +1,31 @@
-# Strong Roots 🌱
+# 🌳 Strong Roots 
 
-**A single app to keep you organized.**
+Strong Roots is my command center for habits, daily todos, notes, journals, lists, and goals. I use this as the "open" tab on my personal computer. It also makes it easy to access my calendar, my budgetting app, Linear, and Perplexity. It also allows me to record weekly vlogs using the Loom SDK recorder.
 
-Strong Roots is your personal command center for daily habits, tasks, reflections, and ideas. Everything you need to stay on track, all in one place. Tailored for my needs and organization style, but not very hard to iterate on if you want to Frankenstein it.
-
----
+This tool exists to help me bias my time towards action & expression rather than planinng and selecting "what to do". The ultimate goal of this app is to make **me** more organized, productive, and happy. I hope you find it useful too! Running `~/strongroots/go.sh` will handle setup from a cold boot and launch the app. 
 
 ## Features
 
 ### 📊 **Habits**
 Track your daily habits with convenient rollup metrics.
 
+![Habits Demo](assets/habits.gif)
+
 - **Daily tracking** with visual calendar view
-- **Flexible scheduling**: morning, night, exercise, health, weekdays, or all-day
+- **Sunday Reflection**: Record an end-of-week video reflection using the built-in **Loom SDK recorder**
+- **Flexible scheduling**: morning, night, exercise, health, weekdays, etc with icon differentiation
 - **Weekly rollups** showing your consistency at a glance
-- **Collapsible week views** to see progress over time
-- **State tracking**: ✅ Done, ❌ Failed, ⏭️ Skipped, or 🔥 Exceptional
-
-**Sunday Reflection**: Record an end-of-week video reflection using the built-in **Loom SDK recorder**. Capture your thoughts, wins, and learnings.
-
----
+- **Collapsible week views** to zoom out and see progress over time
+- **State tracking**: ✅ Done, ❌ Failed, `:)` Failed with exception, or `:/` Succeeded Poorly
 
 ### ✅ **Todos**
-Daily task management separated by **Life** and **Work**.
+Daily task management separated by **Life** and **Work**. Inspired by [Tweek](https://tweek.so/).
 
 - **Single-day focus** - see only today's tasks
 - **Easy task punting** - move incomplete tasks to the next day
 - **State tracking**: Active, Completed, or Failed
 - **Quick add** - type and hit enter to create tasks
 - **Smart sorting** - unfinished tasks always appear first
-
----
 
 ### 💭 **Memos**
 Integrated [Memos](https://github.com/usememos/memos) iframe for quick thoughts and notes.
@@ -39,56 +34,31 @@ Integrated [Memos](https://github.com/usememos/memos) iframe for quick thoughts 
 - **Lightweight note-taking** without leaving your workflow
 - **Privacy-first** - all data stays on your machine
 
----
-
 ### 📔 **Journal**
 Daily check-ins with thoughtful prompts worth asking every day.
 
 - **Configurable questions** like:
-  - "What are you grateful for today?"
   - "What went well today?"
-  - "What could have gone better?"
-  - "What's the most important thing for tomorrow?"
+  - "What did you eat today?"
+
 - **Ad-hoc questions** - add day-specific prompts
 - **Full-width cards** for comfortable writing
 
----
-
 ### 📝 **Lists**
-Organize ideas and groups of thoughts that belong together.
+Organize ideas and groups of thoughts that belong together. Looks like Todoist Kanban view.
 
-- **Color-coded cards** for visual organization
 - **Perfect for**:
   - Groceries
   - Furniture ideas
   - Movie watchlists
-  - Shopping lists
-  - Project ideas
 - **Checkbox items** to track completion
 - **Quick add/edit** - inline editing for speed
-
----
 
 ### 🌱 **Grow**
 Google Keep-style cards for ideas on what to do next.
 
 - **Visual card layout** with different sizes (small, medium, large, tall, wide)
-- **Color-coded** for categorization
-- **Track ideas** for habits to try and commit to next
 - **Start/Archive** - move cards when you begin or complete them
-- **Editable in-place** - click to edit title and content
-
----
-
-## Tech Stack
-
-- **Web Client**: React + TypeScript + Vite
-- **API Server**: Node.js + Express
-- **Storage**: Local CSV files + JSON
-- **Styling**: Vanilla CSS with Phosphor Icons
-- **Video**: Loom SDK
-
----
 
 ## Getting Started
 
@@ -128,8 +98,6 @@ Google Keep-style cards for ideas on what to do next.
    - Start the client on `http://localhost:5174`
    - Open your browser automatically
 
----
-
 ## Project Structure
 
 ```
@@ -158,7 +126,14 @@ habits/
 └── README.md
 ```
 
----
+## Tech Stack
+
+- **Web Client**: React + TypeScript + Vite
+- **API Server**: Node.js + Express
+- **Storage**: Local CSV files + JSON
+- **Styling**: Vanilla CSS with Phosphor Icons
+- **Video**: Loom SDK
+
 
 ## Data Storage
 
@@ -169,9 +144,11 @@ All your data is stored **locally** in the `data/` directory:
 
 ### Data Initialization
 
-The app automatically creates missing data files with proper schema on startup. See [DATA_INITIALIZATION.md](DATA_INITIALIZATION.md) for details.
+The app automatically creates missing data files with proper schema on startup. 
 
----
+## Backups
+
+TODO!
 
 ## Development
 
@@ -197,8 +174,6 @@ pnpm run dev
 cd client
 pnpm run build
 ```
-
----
 
 ## API Endpoints
 
@@ -232,9 +207,7 @@ pnpm run build
 - `GET /vlogs/:weekStartDate` - Get vlog for a specific week
 - `POST /vlogs` - Save a vlog
 
----
-
-## Design Philosophy
+## Design
 
 **Strong Roots** is built around a few core principles:
 
@@ -245,26 +218,12 @@ pnpm run build
 5. **Daily focus** - Emphasizes today while tracking long-term progress
 6. **Reflection-driven** - Built-in prompts to help you learn and grow
 
----
-
 ## Privacy
 
 All data is stored locally on your machine. Nothing is sent to external servers. Your habits, tasks, and reflections are yours alone.
-
----
-
-## License
-
-MIT
-
----
 
 ## Acknowledgments
 
 - [Memos](https://github.com/usememos/memos) - For the embedded note-taking experience
 - [Phosphor Icons](https://phosphoricons.com/) - For beautiful, consistent icons
 - [Loom SDK](https://www.loom.com/sdk) - For seamless video recording
-
----
-
-**Built with ❤️ for personal growth and organization.**

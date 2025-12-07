@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, type ReactNode } from 'react';
 import { DateUtility } from '../../utils';
 import { ArrowCircleLeft, StrategyIcon } from '@phosphor-icons/react';
+import './DayWeek.css';
 
 export interface DayWeekColumnData {
   date: Date;

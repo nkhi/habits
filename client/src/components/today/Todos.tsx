@@ -5,6 +5,7 @@ import { generateId, DateUtility } from '../../utils';
 import { Trash, Check, X, ArrowBendDownRight } from '@phosphor-icons/react';
 import { DayWeek, type DayWeekColumnData } from '../shared/DayWeek';
 import { WeekView } from './WeekView';
+import './Todos.css';
 
 interface TodosProps {
   apiBaseUrl: string;

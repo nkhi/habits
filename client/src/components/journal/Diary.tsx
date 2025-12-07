@@ -5,6 +5,7 @@ import type { DiaryEntry, Question } from '../../types';
 import { generateId } from '../../utils';
 import { DayWeek, type DayWeekColumnData } from '../shared/DayWeek';
 import { QuestionView } from './QuestionView';
+import './Diary.css';
 
 interface DiaryProps {
   apiBaseUrl: string;

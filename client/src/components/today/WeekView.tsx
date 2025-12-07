@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { DateUtility } from '../../utils';
 import { CaretLeft, CaretRight, ArrowBendUpLeft } from '@phosphor-icons/react';
 import type { DayWeekColumnData } from '../shared/DayWeek';
+import './WeekView.css';
 
 interface WeekViewProps {
     renderColumn: (data: DayWeekColumnData) => React.ReactNode;

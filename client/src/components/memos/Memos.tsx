@@ -1,4 +1,5 @@
 import React from 'react';
+import './Memos.css';
 
 export const Memos: React.FC = () => {
     return (

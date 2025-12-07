@@ -5,6 +5,7 @@ import { DateUtility, getGrade, generateId } from '../../utils';
 import VlogModal from './VlogModal';
 import ChartModal from './ChartModal';
 import { VideoCameraIcon, SunHorizonIcon, MoonIcon, HeartIcon, TreeIcon, BarbellIcon, ResizeIcon, PresentationChartIcon } from '@phosphor-icons/react';
+import './HabitTracker.css';
 
 const CONFIG = {
   startDate: new Date('2025-11-09T00:00:00'),

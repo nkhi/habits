@@ -196,6 +196,43 @@ app.post('/vlogs', async (req, res) => {
   }
 });
 
+
+// Get tasks for a specific week/range
+app.get('/tasks/week', async (req, res) => {
+  const { start, end } = req.query;
+  if (!start || !end) {
+    return res.status(400).json({ error: 'Missing start/end date parameters' });
+  }
+
+  try {
+    const result = await db.query(`
+      SELECT * FROM tasks 
+      WHERE date >= $1 AND date <= $2
+    `, [start, end]);
+    
+    // Convert flat DB rows back to date-keyed object
+    const tasksByDate = {};
+    result.rows.forEach(t => {
+      const dateStr = typeof t.date === 'string' ? t.date : t.date.toISOString().split('T')[0];
+      
+      if (!tasksByDate[dateStr]) tasksByDate[dateStr] = [];
+      
+      tasksByDate[dateStr].push({
+        id: t.id,
+        text: t.text,
+        completed: t.completed,
+        date: dateStr,
+        createdAt: t.created_at,
+        category: t.category,
+        state: t.state
+      });
+    });
+    res.json(tasksByDate);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Get all tasks (bulk fetch for initial load)
 app.get('/tasks', async (req, res) => {
   try {

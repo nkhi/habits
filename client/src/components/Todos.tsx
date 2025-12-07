@@ -4,6 +4,7 @@ import type { Task } from '../types';
 import { generateId, DateUtility } from '../utils';
 import { Trash, Check, X, ArrowBendDownRight } from '@phosphor-icons/react';
 import { DayWeek, type DayWeekColumnData } from './DayWeek';
+import { WeekView } from './WeekView';
 
 interface TodosProps {
   apiBaseUrl: string;
@@ -12,6 +13,8 @@ interface TodosProps {
 export function Todos({ apiBaseUrl }: TodosProps) {
   const [tasks, setTasks] = useState<Record<string, Task[]>>({});
   const [newTaskTexts, setNewTaskTexts] = useState<Record<string, string>>({});
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const [weekCategory, setWeekCategory] = useState<'life' | 'work'>('life');
   const api = useRef(new HabitAPI(apiBaseUrl)).current;
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -30,6 +33,17 @@ export function Todos({ apiBaseUrl }: TodosProps) {
       setTasks(data || {});
     } catch (error) {
       console.error('Failed to load tasks:', error);
+    }
+  }
+
+  async function loadWeekTasks(start: Date, end: Date) {
+    try {
+      const startStr = DateUtility.formatDate(start);
+      const endStr = DateUtility.formatDate(end);
+      const data = await api.getTasksForWeek(startStr, endStr);
+      setTasks(prev => ({ ...prev, ...data }));
+    } catch (error) {
+      console.error('Failed to load week tasks:', error);
     }
   }
 
@@ -207,6 +221,9 @@ export function Todos({ apiBaseUrl }: TodosProps) {
     const lifeTasks = sortTasks(dayTasks.filter(t => !t.category || t.category === 'life'));
     const workTasks = sortTasks(dayTasks.filter(t => t.category === 'work'));
 
+    const showLife = viewMode === 'day' || weekCategory === 'life';
+    const showWork = viewMode === 'day' || weekCategory === 'work';
+
     return (
       <>
         <div className="todo-column-header">
@@ -219,118 +236,150 @@ export function Todos({ apiBaseUrl }: TodosProps) {
         </div>
 
         <div className="todo-content-row">
-          <div className="todo-category-section">
-            <div className="todo-category-header">Life</div>
-            <form onSubmit={(e) => addTask(e, dateStr, 'life')} className="todo-input-form-small">
-              <input
-                type="text"
-                value={newTaskTexts[`${dateStr}_life`] || ''}
-                onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_life`]: e.target.value })}
-                placeholder="Add task"
-                className="todo-input-small"
-              />
-            </form>
-            <div className="todo-items">
-              {lifeTasks.map(task => {
-                const taskState = task.state || (task.completed ? 'completed' : 'active');
-                return (
-                  <div
-                    key={task.id}
-                    className={`todo-item ${taskState}`}
-                    onClick={() => toggleTask(dateStr, task.id)}
-                  >
-                    <div className="todo-item-content">
-                      <button
-                        type="button"
-                        className={`todo-check-btn ${taskState}`}
-                      >
-                        {taskState === 'completed' && <Check size={12} weight="bold" />}
-                        {taskState === 'failed' && <X size={12} weight="bold" />}
-                      </button>
-                      <span className="todo-text">{task.text}</span>
+          {showLife && (
+            <div className="todo-category-section">
+              {viewMode === 'day' && <div className="todo-category-header">Life</div>}
+              <form onSubmit={(e) => addTask(e, dateStr, 'life')} className="todo-input-form-small">
+                <input
+                  type="text"
+                  value={newTaskTexts[`${dateStr}_life`] || ''}
+                  onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_life`]: e.target.value })}
+                  placeholder="Add task"
+                  className="todo-input-small"
+                />
+              </form>
+              <div className="todo-items">
+                {lifeTasks.map(task => {
+                  const taskState = task.state || (task.completed ? 'completed' : 'active');
+                  return (
+                    <div
+                      key={task.id}
+                      className={`todo-item ${taskState}`}
+                      onClick={() => toggleTask(dateStr, task.id)}
+                    >
+                      <div className="todo-item-content">
+                        <button
+                          type="button"
+                          className={`todo-check-btn ${taskState}`}
+                        >
+                          {taskState === 'completed' && <Check size={12} weight="bold" />}
+                          {taskState === 'failed' && <X size={12} weight="bold" />}
+                        </button>
+                        <span className="todo-text">{task.text}</span>
+                      </div>
+                      <div className="todo-actions">
+                        <button
+                          className="todo-clone-btn"
+                          onClick={(e) => { e.stopPropagation(); puntTask(dateStr, task.id); }}
+                          title="Fail & Punt to Next Day"
+                        >
+                          <ArrowBendDownRight size={14} />
+                        </button>
+                        <button
+                          className="todo-delete-btn"
+                          onClick={(e) => { e.stopPropagation(); deleteTask(dateStr, task.id); }}
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="todo-actions">
-                      <button
-                        className="todo-clone-btn"
-                        onClick={(e) => { e.stopPropagation(); puntTask(dateStr, task.id); }}
-                        title="Fail & Punt to Next Day"
-                      >
-                        <ArrowBendDownRight size={14} />
-                      </button>
-                      <button
-                        className="todo-delete-btn"
-                        onClick={(e) => { e.stopPropagation(); deleteTask(dateStr, task.id); }}
-                      >
-                        <Trash size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="todo-category-section">
-            <div className="todo-category-header">Work</div>
-            <form onSubmit={(e) => addTask(e, dateStr, 'work')} className="todo-input-form-small">
-              <input
-                type="text"
-                value={newTaskTexts[`${dateStr}_work`] || ''}
-                onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_work`]: e.target.value })}
-                placeholder="Add task"
-                className="todo-input-small"
-              />
-            </form>
-            <div className="todo-items">
-              {workTasks.map(task => {
-                const taskState = task.state || (task.completed ? 'completed' : 'active');
-                return (
-                  <div
-                    key={task.id}
-                    className={`todo-item ${taskState}`}
-                    onClick={() => toggleTask(dateStr, task.id)}
-                  >
-                    <div className="todo-item-content">
-                      <button
-                        type="button"
-                        className={`todo-check-btn ${taskState}`}
-                      >
-                        {taskState === 'completed' && <Check size={12} weight="bold" />}
-                        {taskState === 'failed' && <X size={12} weight="bold" />}
-                      </button>
-                      <span className="todo-text">{task.text}</span>
-                    </div>
+          {showWork && (
+            <div className="todo-category-section">
+              {viewMode === 'day' && <div className="todo-category-header">Work</div>}
+              <form onSubmit={(e) => addTask(e, dateStr, 'work')} className="todo-input-form-small">
+                <input
+                  type="text"
+                  value={newTaskTexts[`${dateStr}_work`] || ''}
+                  onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_work`]: e.target.value })}
+                  placeholder="Add task"
+                  className="todo-input-small"
+                />
+              </form>
+              <div className="todo-items">
+                {workTasks.map(task => {
+                  const taskState = task.state || (task.completed ? 'completed' : 'active');
+                  return (
+                    <div
+                      key={task.id}
+                      className={`todo-item ${taskState}`}
+                      onClick={() => toggleTask(dateStr, task.id)}
+                    >
+                      <div className="todo-item-content">
+                        <button
+                          type="button"
+                          className={`todo-check-btn ${taskState}`}
+                        >
+                          {taskState === 'completed' && <Check size={12} weight="bold" />}
+                          {taskState === 'failed' && <X size={12} weight="bold" />}
+                        </button>
+                        <span className="todo-text">{task.text}</span>
+                      </div>
 
-                    <div className="todo-actions">
-                      <button
-                        className="todo-clone-btn"
-                        onClick={(e) => { e.stopPropagation(); puntTask(dateStr, task.id); }}
-                        title="Fail & Punt to Next Day"
-                      >
-                        <ArrowBendDownRight size={14} />
-                      </button>
-                      <button
-                        className="todo-delete-btn"
-                        onClick={(e) => { e.stopPropagation(); deleteTask(dateStr, task.id); }}
-                      >
-                        <Trash size={14} />
-                      </button>
+                      <div className="todo-actions">
+                        <button
+                          className="todo-clone-btn"
+                          onClick={(e) => { e.stopPropagation(); puntTask(dateStr, task.id); }}
+                          title="Fail & Punt to Next Day"
+                        >
+                          <ArrowBendDownRight size={14} />
+                        </button>
+                        <button
+                          className="todo-delete-btn"
+                          onClick={(e) => { e.stopPropagation(); deleteTask(dateStr, task.id); }}
+                        >
+                          <Trash size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </>
     );
   };
+
+  if (viewMode === 'week') {
+    return (
+      <WeekView
+        renderColumn={renderTodoColumn}
+        currentDate={new Date()}
+        onClose={() => setViewMode('day')}
+        onWeekChange={loadWeekTasks}
+        headerControls={
+          <div className="week-category-toggle">
+            <button
+              className={`toggle-btn ${weekCategory === 'life' ? 'active' : ''}`}
+              onClick={() => setWeekCategory('life')}
+            >
+              Life
+            </button>
+            <button
+              className={`toggle-btn ${weekCategory === 'work' ? 'active' : ''}`}
+              onClick={() => setWeekCategory('work')}
+            >
+              Work
+            </button>
+          </div>
+        }
+      />
+    );
+  }
 
   return (
     <DayWeek
       renderColumn={renderTodoColumn}
       className="todos-scroll-container"
       columnClassName="todo-column"
+      onMoreClick={() => setViewMode('week')}
     />
   );
 }

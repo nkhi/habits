@@ -49,6 +49,12 @@ export class HabitAPI {
     return response.json();
   }
 
+  async getTasksForWeek(start: string, end: string): Promise<Record<string, import('./types').Task[]>> {
+    const response = await fetch(`${this.baseUrl}/tasks/week?start=${start}&end=${end}`);
+    if (!response.ok) throw new Error('Failed to fetch tasks for week');
+    return response.json();
+  }
+
   async createTask(task: import('./types').Task): Promise<void> {
     const response = await fetch(`${this.baseUrl}/tasks`, {
       method: 'POST',

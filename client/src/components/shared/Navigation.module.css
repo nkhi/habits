@@ -10,6 +10,14 @@
   position: relative;
 }
 
+/* Left Section - Server Status */
+.leftSection {
+  position: absolute;
+  left: 24px;
+  display: flex;
+  align-items: center;
+}
+
 /* Left - Main Tab Switcher */
 .tabSwitcher {
   display: flex;

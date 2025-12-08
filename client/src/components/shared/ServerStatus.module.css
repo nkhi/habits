@@ -1,0 +1,31 @@
+/* Server Status Indicator */
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  height: 100%;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* Premium "bead" look with radial gradient for shine */
+  background: radial-gradient(circle at 35% 35%, #ff8787, #e03131);
+  /* Layered shadows: subtle ring + diffuse glow */
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), 0 0 12px rgba(224, 49, 49, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  cursor: help;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

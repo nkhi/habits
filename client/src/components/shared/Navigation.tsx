@@ -13,7 +13,12 @@ interface NavigationProps {
 export function Navigation({ activeTab, onTabChange, apiBaseUrl }: NavigationProps) {
     return (
         <div className={styles.navContainer}>
-            {/* Left side - Main navigation tabs */}
+            {/* Left side - Server Status */}
+            <div className={styles.leftSection}>
+                <ServerStatus apiBaseUrl={apiBaseUrl} />
+            </div>
+
+            {/* Center - Main navigation tabs */}
             <div className={styles.tabSwitcher}>
                 <button
                     className={`${styles.tabBtn} ${activeTab === 'habits' ? styles.active : ''}`}
@@ -59,21 +64,17 @@ export function Navigation({ activeTab, onTabChange, apiBaseUrl }: NavigationPro
                 </button>
             </div>
 
-            {/* Right side - icon-only external links + server status */}
+            {/* Right side - icon-only external links */}
             <div className={styles.rightLinks}>
                 <a href="https://app.monarchmoney.com/accounts?chartType=performance&dateRange=6M&timeframe=month" target="_blank" rel="noreferrer" className={styles.iconLink}>
                     <TipJarIcon size={20} weight="duotone" />
                 </a>
-                {/* <a href="https://www.perplexity.ai/" target="_blank" rel="noreferrer" className={styles.iconLink}>
-                    <img src="/icons/perplexity.svg" alt="Perplexity" style={{ width: '20px', height: '20px', opacity: 0.5 }} />
-                </a> */}
                 <a href="cron://" className={styles.iconLink}>
                     <Calendar size={20} weight="duotone" />
                 </a>
                 <a href="linear://" className={styles.iconLink}>
                     <ChartLineUpIcon size={20} weight="bold" />
                 </a>
-                <ServerStatus apiBaseUrl={apiBaseUrl} />
             </div>
         </div>
     );

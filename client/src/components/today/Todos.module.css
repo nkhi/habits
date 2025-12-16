@@ -129,7 +129,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
 }
@@ -150,6 +150,16 @@
   font-weight: 500;
 }
 
+.miniPieChart {
+  flex-shrink: 0;
+  opacity: 0.5;
+  margin-right: 13px;
+}
+
+.miniPieChart:hover {
+  opacity: 1;
+}
+
 .todoItems {
   flex: 1;
   overflow-y: auto;
@@ -166,7 +176,8 @@
   border-radius: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background-color 0.2s ease;
-  cursor: pointer;
+  cursor: default;
+  user-select: text;
 }
 
 .todoItem:hover {
@@ -256,6 +267,85 @@
   background: rgba(255, 59, 48, 0.1);
 }
 
+/* State Overlay Wrapper */
+.stateOverlayWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stateOverlay {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px) scale(0.95);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #111111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-left: 8px;
+  z-index: 100;
+  animation: stateOverlayIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 12px 24px -4px rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+
+@keyframes stateOverlayIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+}
+
+.overlayDot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.overlayDot.successDot {
+  border-color: #34D399;
+  color: #34D399;
+}
+
+.overlayDot.successDot:hover,
+.overlayDot.successDot.active {
+  background: #34D399;
+  border-color: #34D399;
+  color: white;
+}
+
+.overlayDot.failDot {
+  border-color: #FF3B30;
+  color: #FF3B30;
+}
+
+.overlayDot.failDot:hover,
+.overlayDot.failDot.active {
+  background: #FF3B30;
+  border-color: #FF3B30;
+  color: white;
+}
+
 .todoActions {
   display: flex;
   align-items: center;
@@ -288,22 +378,71 @@
 
 .todoInputSmall {
   width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.5rem 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
   color: white;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.todoInputSmall:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .todoInputSmall:focus {
-  border-bottom-color: #007AFF;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
 }
 
 .todoInputSmall::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.todoInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.todoInputWrapper .todoInputSmall {
+  padding-right: 2.5rem;
+}
+
+.todoInputSubmitBtn {
+  position: absolute;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-right: 6px;
+}
+
+.todoInputSubmitBtn:hover:not(:disabled) {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34D399;
+  transform: scale(1.05);
+}
+
+.todoInputSubmitBtn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.todoInputSubmitBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .todoCategorySection {
@@ -313,15 +452,28 @@
   min-height: 0;
   min-width: 0;
   margin-bottom: 0; /* Remove margin, use gap instead */
+  overflow: hidden;
+}
+
+.accordionsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .todoCategoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 0.75rem;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.4);
   font-weight: 600;
   letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .todoInputFormSmall {
@@ -356,6 +508,132 @@
   background: #333;
   color: white;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Accordion Styles */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.accordion.expanded {
+  /* Only expand when content is visible */
+  flex: 1;
+  min-height: 0;
+}
+
+.accordionHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.accordionActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.5rem;
+}
+
+.accordionActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.accordionActionBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.accordionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.accordionHeader:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.openAccordion {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.openAccordion:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.successAccordion {
+  color: rgba(52, 211, 153, 0.6);
+}
+
+.successAccordion:hover {
+  color: rgba(52, 211, 153, 0.8);
+}
+
+.failedAccordion {
+  color: rgba(255, 59, 48, 0.6);
+}
+
+.failedAccordion:hover {
+  color: rgba(255, 59, 48, 0.8);
+}
+
+.accordionCaret {
+  transition: transform 0.2s ease;
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+}
+
+.accordionCaret.expanded {
+  transform: rotate(0deg);
+}
+
+.accordionCount {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+    border-radius: 50px;
+  height: 24px;
+  font-size: 0.7rem;
+  width: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.accordionContent {
+  padding: 0 0.5rem 0.5rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 @media (max-width: 768px) {

@@ -1,11 +1,116 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { getTasks, getWorkTasks, getTasksForWeek, createTask, updateTask, deleteTask as apiDeleteTask } from '../../api/tasks';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { getTasks, getWorkTasks, getTasksForWeek, createTask, updateTask, deleteTask as apiDeleteTask, batchPuntTasks, batchFailTasks } from '../../api/tasks';
 import type { Task } from '../../types';
 import { generateId, DateUtility } from '../../utils';
-import { Trash, Check, X, ArrowBendDownRight } from '@phosphor-icons/react';
+import { Trash, Check, X, ArrowBendDownRight, CaretDown, ArrowRight } from '@phosphor-icons/react';
 import { DayWeek, type DayWeekColumnData } from '../shared/DayWeek';
 import { WeekView } from './WeekView';
 import styles from './Todos.module.css';
+
+// State overlay hover component
+interface StateOverlayProps {
+  taskId: string;
+  dateStr: string;
+  currentState: 'active' | 'completed' | 'failed';
+  onSetState: (dateStr: string, taskId: string, newState: 'active' | 'completed' | 'failed') => void;
+  onToggle: () => void;
+  children: React.ReactNode;
+}
+
+function StateOverlayWrapper({ taskId, dateStr, currentState, onSetState, onToggle, children }: StateOverlayProps) {
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [isHoveringOverlay, setIsHoveringOverlay] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    clearTimers();
+    hoverTimerRef.current = setTimeout(() => {
+      setShowOverlay(true);
+    }, 400);
+  }, [clearTimers]);
+
+  const handleMouseLeave = useCallback(() => {
+    clearTimers();
+    // Delay hiding to allow mouse to move to overlay
+    hideTimerRef.current = setTimeout(() => {
+      if (!isHoveringOverlay) {
+        setShowOverlay(false);
+      }
+    }, 100);
+  }, [clearTimers, isHoveringOverlay]);
+
+  const handleOverlayEnter = useCallback(() => {
+    setIsHoveringOverlay(true);
+    clearTimers();
+  }, [clearTimers]);
+
+  const handleOverlayLeave = useCallback(() => {
+    setIsHoveringOverlay(false);
+    setShowOverlay(false);
+  }, []);
+
+  const handleStateClick = useCallback((e: React.MouseEvent, newState: 'completed' | 'failed') => {
+    e.stopPropagation();
+    onSetState(dateStr, taskId, newState);
+    setShowOverlay(false);
+    setIsHoveringOverlay(false);
+    clearTimers();
+  }, [dateStr, taskId, onSetState, clearTimers]);
+
+  useEffect(() => {
+    return () => {
+      clearTimers();
+    };
+  }, [clearTimers]);
+
+  return (
+    <div
+      className={styles.stateOverlayWrapper}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div onClick={onToggle}>
+        {children}
+      </div>
+      {showOverlay && (
+        <div
+          className={styles.stateOverlay}
+          onMouseEnter={handleOverlayEnter}
+          onMouseLeave={handleOverlayLeave}
+        >
+          <button
+            type="button"
+            className={`${styles.overlayDot} ${styles.successDot} ${currentState === 'completed' ? styles.active : ''}`}
+            onClick={(e) => handleStateClick(e, 'completed')}
+            title="Mark as completed"
+          >
+            <Check size={12} weight="bold" />
+          </button>
+          <button
+            type="button"
+            className={`${styles.overlayDot} ${styles.failDot} ${currentState === 'failed' ? styles.active : ''}`}
+            onClick={(e) => handleStateClick(e, 'failed')}
+            title="Mark as failed"
+          >
+            <X size={12} weight="bold" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface TodosProps {
   apiBaseUrl: string;
@@ -17,6 +122,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
   const [newTaskTexts, setNewTaskTexts] = useState<Record<string, string>>({});
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [weekCategory, setWeekCategory] = useState<'life' | 'work'>('life');
+  const [expandedAccordions, setExpandedAccordions] = useState<Record<string, boolean>>({});
 
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -115,7 +221,47 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
     setTasks(updatedTasks);
 
     // Debounce API save - update only this single task
-    const debounceKey = `${dateStr}_${taskId}`;
+    const debounceKey = `${dateStr}_${taskId} `;
+    if (debounceTimers.current[debounceKey]) {
+      clearTimeout(debounceTimers.current[debounceKey]);
+    }
+
+    debounceTimers.current[debounceKey] = setTimeout(async () => {
+      try {
+        await updateTask(apiBaseUrl, taskId, {
+          completed: newState === 'completed',
+          state: newState
+        });
+      } catch (error) {
+        console.error('Failed to update task:', error);
+        // Revert optimistic update on error
+        setTasks(tasks);
+      }
+      delete debounceTimers.current[debounceKey];
+    }, 3000);
+  }
+
+  function setTaskState(dateStr: string, taskId: string, newState: 'active' | 'completed' | 'failed') {
+    const currentDayTasks = tasks[dateStr] || [];
+    const currentTask = currentDayTasks.find(t => t.id === taskId);
+    if (!currentTask) return;
+
+    const updatedTask = {
+      ...currentTask,
+      completed: newState === 'completed',
+      state: newState
+    };
+
+    const updatedDayTasks = currentDayTasks.map(t =>
+      t.id === taskId ? updatedTask : t
+    );
+    const updatedTasks = { ...tasks, [dateStr]: updatedDayTasks };
+
+    // Update UI immediately
+    setTasks(updatedTasks);
+
+    // Debounce API save
+    const debounceKey = `${dateStr}_${taskId} `;
     if (debounceTimers.current[debounceKey]) {
       clearTimeout(debounceTimers.current[debounceKey]);
     }
@@ -206,24 +352,324 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
     }
   }
 
-  const renderTodoColumn = ({ date, dateStr, isToday }: DayWeekColumnData) => {
-    const dayTasks = tasks[dateStr] || [];
-    const sortTasks = (taskList: Task[]) => {
-      return [...taskList].sort((a, b) => {
-        const stateA = a.state || (a.completed ? 'completed' : 'active');
-        const stateB = b.state || (b.completed ? 'completed' : 'active');
+  async function batchPuntAllTasks(dateStr: string, taskIds: string[], category: 'life' | 'work') {
+    if (taskIds.length === 0) return;
 
-        const isAActive = stateA === 'active';
-        const isBActive = stateB === 'active';
+    const today = new Date();
+    const todayStr = DateUtility.formatDate(today);
 
-        if (isAActive && !isBActive) return -1;
-        if (!isAActive && isBActive) return 1;
-        return 0;
-      });
+    let targetDateStr = todayStr;
+    if (dateStr >= todayStr) {
+      const d = new Date(dateStr);
+      d.setUTCDate(d.getUTCDate() + 1);
+      targetDateStr = d.toISOString().split('T')[0];
+    }
+
+    // Optimistic update
+    const currentDayTasks = tasks[dateStr] || [];
+    const targetDayTasks = tasks[targetDateStr] || [];
+
+    const updatedCurrentDay = currentDayTasks.map(t =>
+      taskIds.includes(t.id) ? { ...t, state: 'failed' as const, completed: false } : t
+    );
+
+    const newTasks = currentDayTasks
+      .filter(t => taskIds.includes(t.id))
+      .map(t => ({
+        ...t,
+        id: generateId(),
+        date: targetDateStr,
+        createdAt: new Date().toISOString(),
+        state: 'active' as const,
+        completed: false
+      }));
+
+    const updatedTargetDay = [...targetDayTasks, ...newTasks];
+
+    setTasks(prev => ({
+      ...prev,
+      [dateStr]: updatedCurrentDay,
+      [targetDateStr]: updatedTargetDay
+    }));
+
+    try {
+      await batchPuntTasks(apiBaseUrl, taskIds, dateStr, targetDateStr);
+    } catch (error) {
+      console.error('Failed to batch punt tasks:', error);
+      setTasks(tasks);
+    }
+  }
+
+  async function batchFailAllTasks(dateStr: string, taskIds: string[]) {
+    if (taskIds.length === 0) return;
+
+    // Optimistic update
+    const currentDayTasks = tasks[dateStr] || [];
+    const updatedDayTasks = currentDayTasks.map(t =>
+      taskIds.includes(t.id) ? { ...t, state: 'failed' as const, completed: false } : t
+    );
+
+    setTasks(prev => ({
+      ...prev,
+      [dateStr]: updatedDayTasks
+    }));
+
+    try {
+      await batchFailTasks(apiBaseUrl, taskIds);
+    } catch (error) {
+      console.error('Failed to batch fail tasks:', error);
+      setTasks(tasks);
+    }
+  }
+
+  const toggleAccordion = (key: string) => {
+    setExpandedAccordions(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const renderTaskItem = (task: Task, dateStr: string) => {
+    const taskState = task.state || (task.completed ? 'completed' : 'active');
+    return (
+      <div
+        key={task.id}
+        className={`${styles.todoItem} ${styles[taskState] || ''}`}
+      >
+        <div className={styles.todoItemContent}>
+          <StateOverlayWrapper
+            taskId={task.id}
+            dateStr={dateStr}
+            currentState={taskState}
+            onSetState={setTaskState}
+            onToggle={() => toggleTask(dateStr, task.id)}
+          >
+            <button
+              type="button"
+              className={`${styles.todoCheckBtn} ${styles[taskState] || ''}`}
+            >
+              {taskState === 'completed' && <Check size={12} weight="bold" />}
+              {taskState === 'failed' && <X size={12} weight="bold" />}
+            </button>
+          </StateOverlayWrapper>
+          <span className={styles.todoText}>{task.text}</span>
+        </div>
+        <div className={styles.todoActions}>
+          <button
+            className={styles.todoCloneBtn}
+            onClick={() => puntTask(dateStr, task.id)}
+            title="Fail & Punt to Next Day"
+          >
+            <ArrowBendDownRight size={14} />
+          </button>
+          <button
+            className={styles.todoDeleteBtn}
+            onClick={() => deleteTask(dateStr, task.id)}
+          >
+            <Trash size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTasksWithAccordions = (
+    taskList: Task[],
+    dateStr: string,
+    category: 'life' | 'work'
+  ) => {
+    const activeTasks = taskList.filter(t => {
+      const state = t.state || (t.completed ? 'completed' : 'active');
+      return state === 'active';
+    });
+    const completedTasks = taskList.filter(t => {
+      const state = t.state || (t.completed ? 'completed' : 'active');
+      return state === 'completed';
+    });
+    const failedTasks = taskList.filter(t => {
+      const state = t.state || (t.completed ? 'completed' : 'active');
+      return state === 'failed';
+    });
+
+    const openKey = `${dateStr}_${category} _open`;
+    const successKey = `${dateStr}_${category} _success`;
+    const failedKey = `${dateStr}_${category} _failed`;
+
+    // Open accordion defaults to expanded
+    const isOpenExpanded = expandedAccordions[openKey] !== false;
+
+    return (
+      <div className={styles.accordionsContainer}>
+        {/* Open tasks accordion - default expanded */}
+        {activeTasks.length > 0 && (
+          <div className={`${styles.accordion} ${isOpenExpanded ? styles.expanded : ''}`}>
+            <div className={styles.accordionHeaderRow}>
+              <button
+                className={`${styles.accordionHeader} ${styles.openAccordion}`}
+                onClick={() => setExpandedAccordions(prev => ({ ...prev, [openKey]: !isOpenExpanded }))}
+              >
+                <CaretDown
+                  size={14}
+                  className={`${styles.accordionCaret} ${isOpenExpanded ? styles.expanded : ''}`}
+                />
+                <span>Open</span>
+                <span className={styles.accordionCount}>{activeTasks.length}</span>
+              </button>
+              {isOpenExpanded && (
+                <div className={styles.accordionActions}>
+                  <button
+                    className={styles.accordionActionBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      batchPuntAllTasks(dateStr, activeTasks.map(t => t.id), category);
+                    }}
+                    title="Punt All to Next Day"
+                  >
+                    <ArrowBendDownRight size={14} />
+                  </button>
+                  <button
+                    className={styles.accordionActionBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      batchFailAllTasks(dateStr, activeTasks.map(t => t.id));
+                    }}
+                    title="Fail All"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+            {isOpenExpanded && (
+              <div className={styles.accordionContent}>
+                {activeTasks.map(task => renderTaskItem(task, dateStr))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Success accordion */}
+        {completedTasks.length > 0 && (
+          <div className={`${styles.accordion} ${expandedAccordions[successKey] ? styles.expanded : ''} `}>
+            <button
+              className={`${styles.accordionHeader} ${styles.successAccordion} `}
+              onClick={() => toggleAccordion(successKey)}
+            >
+              <CaretDown
+                size={14}
+                className={`${styles.accordionCaret} ${expandedAccordions[successKey] ? styles.expanded : ''} `}
+              />
+              <span>Done</span>
+              <span className={styles.accordionCount}>{completedTasks.length}</span>
+            </button>
+            {expandedAccordions[successKey] && (
+              <div className={styles.accordionContent}>
+                {completedTasks.map(task => renderTaskItem(task, dateStr))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Failed accordion */}
+        {failedTasks.length > 0 && (
+          <div className={`${styles.accordion} ${expandedAccordions[failedKey] ? styles.expanded : ''} `}>
+            <button
+              className={`${styles.accordionHeader} ${styles.failedAccordion} `}
+              onClick={() => toggleAccordion(failedKey)}
+            >
+              <CaretDown
+                size={14}
+                className={`${styles.accordionCaret} ${expandedAccordions[failedKey] ? styles.expanded : ''} `}
+              />
+              <span>Cancelled</span>
+              <span className={styles.accordionCount}>{failedTasks.length}</span>
+            </button>
+            {expandedAccordions[failedKey] && (
+              <div className={styles.accordionContent}>
+                {failedTasks.map(task => renderTaskItem(task, dateStr))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Mini pie chart SVG component
+  const MiniPieChart = ({ active, completed, failed }: { active: number; completed: number; failed: number }) => {
+    const total = active + completed + failed;
+    if (total === 0) return null;
+
+    const size = 18;
+    const radius = 9;
+    const cx = size / 2;
+    const cy = size / 2;
+
+    // Calculate angles
+    const activeAngle = (active / total) * 360;
+    const completedAngle = (completed / total) * 360;
+    // failed takes the rest
+
+    // Convert angles to SVG arc paths
+    const polarToCartesian = (angle: number) => {
+      const rad = (angle - 90) * Math.PI / 180;
+      return {
+        x: cx + radius * Math.cos(rad),
+        y: cy + radius * Math.sin(rad)
+      };
     };
 
-    const lifeTasks = sortTasks(dayTasks.filter(t => !t.category || t.category === 'life'));
-    const workTasks = sortTasks(dayTasks.filter(t => t.category === 'work'));
+    const createArc = (startAngle: number, endAngle: number) => {
+      if (endAngle - startAngle >= 360) {
+        // Full circle
+        return `M ${cx} ${cy - radius} A ${radius} ${radius} 0 1 1 ${cx - 0.001} ${cy - radius} `;
+      }
+      const start = polarToCartesian(startAngle);
+      const end = polarToCartesian(endAngle);
+      const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+      return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+    };
+
+    let currentAngle = 0;
+    const segments = [];
+
+    if (active > 0) {
+      segments.push({ path: createArc(currentAngle, currentAngle + activeAngle), color: 'rgba(255, 255, 255, 0.5)' });
+      currentAngle += activeAngle;
+    }
+    if (completed > 0) {
+      segments.push({ path: createArc(currentAngle, currentAngle + completedAngle), color: 'rgba(52, 211, 153, 0.8)' });
+      currentAngle += completedAngle;
+    }
+    if (failed > 0) {
+      segments.push({ path: createArc(currentAngle, 360), color: 'rgba(255, 59, 48, 0.8)' });
+    }
+
+    return (
+      <svg width={size} height={size} className={styles.miniPieChart}>
+        {segments.map((seg, i) => (
+          <path key={i} d={seg.path} fill={seg.color} />
+        ))}
+      </svg>
+    );
+  };
+
+  // Helper to compute counts for a specific category
+  const getCountsForCategory = (taskList: Task[]) => {
+    let active = 0, completed = 0, failed = 0;
+
+    taskList.forEach(t => {
+      const state = t.state || (t.completed ? 'completed' : 'active');
+      if (state === 'completed') completed++;
+      else if (state === 'failed') failed++;
+      else active++;
+    });
+
+    return { active, completed, failed };
+  };
+
+  const renderTodoColumn = ({ date, dateStr, isToday }: DayWeekColumnData) => {
+    const dayTasks = tasks[dateStr] || [];
+
+    const lifeTasks = dayTasks.filter(t => !t.category || t.category === 'life');
+    const workTasks = dayTasks.filter(t => t.category === 'work');
 
     const showLife = !workMode && (viewMode === 'day' || weekCategory === 'life');
     const showWork = viewMode === 'day' || weekCategory === 'work';
@@ -231,7 +677,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
     return (
       <>
         <div className={styles.todoColumnHeader}>
-          <span className={`${styles.todoDate} ${isToday ? 'today' : ''}`}>
+          <span className={`${styles.todoDate} ${isToday ? 'today' : ''} `}>
             {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
           <span className={styles.todoDayName}>
@@ -242,108 +688,61 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
         <div className={styles.todoContentRow}>
           {showLife && (
             <div className={styles.todoCategorySection}>
-              {viewMode === 'day' && <div className={styles.todoCategoryHeader}>Life</div>}
+              {viewMode === 'day' && (
+                <div className={styles.todoCategoryHeader}>
+                  <span>Life</span>
+                  <MiniPieChart {...getCountsForCategory(lifeTasks)} />
+                </div>
+              )}
               <form onSubmit={(e) => addTask(e, dateStr, 'life')} className={styles.todoInputFormSmall}>
-                <input
-                  type="text"
-                  value={newTaskTexts[`${dateStr}_life`] || ''}
-                  onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_life`]: e.target.value })}
-                  placeholder="Add task"
-                  className={styles.todoInputSmall}
-                />
+                <div className={styles.todoInputWrapper}>
+                  <input
+                    type="text"
+                    value={newTaskTexts[`${dateStr}_life`] || ''}
+                    onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_life`]: e.target.value })}
+                    placeholder="Add task"
+                    className={styles.todoInputSmall}
+                  />
+                  <button
+                    type="submit"
+                    className={styles.todoInputSubmitBtn}
+                    disabled={!newTaskTexts[`${dateStr}_life`]?.trim()}
+                  >
+                    <ArrowRight size={14} weight="bold" />
+                  </button>
+                </div>
               </form>
-              <div className={styles.todoItems}>
-                {lifeTasks.map(task => {
-                  const taskState = task.state || (task.completed ? 'completed' : 'active');
-                  return (
-                    <div
-                      key={task.id}
-                      className={`${styles.todoItem} ${styles[taskState] || ''}`}
-                      onClick={() => toggleTask(dateStr, task.id)}
-                    >
-                      <div className={styles.todoItemContent}>
-                        <button
-                          type="button"
-                          className={`${styles.todoCheckBtn} ${styles[taskState] || ''}`}
-                        >
-                          {taskState === 'completed' && <Check size={12} weight="bold" />}
-                          {taskState === 'failed' && <X size={12} weight="bold" />}
-                        </button>
-                        <span className={styles.todoText}>{task.text}</span>
-                      </div>
-                      <div className={styles.todoActions}>
-                        <button
-                          className={styles.todoCloneBtn}
-                          onClick={(e) => { e.stopPropagation(); puntTask(dateStr, task.id); }}
-                          title="Fail & Punt to Next Day"
-                        >
-                          <ArrowBendDownRight size={14} />
-                        </button>
-                        <button
-                          className={styles.todoDeleteBtn}
-                          onClick={(e) => { e.stopPropagation(); deleteTask(dateStr, task.id); }}
-                        >
-                          <Trash size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {renderTasksWithAccordions(lifeTasks, dateStr, 'life')}
             </div>
           )}
 
           {showWork && (
             <div className={styles.todoCategorySection}>
-              {viewMode === 'day' && <div className={styles.todoCategoryHeader}>Work</div>}
+              {viewMode === 'day' && (
+                <div className={styles.todoCategoryHeader}>
+                  <span>Work</span>
+                  <MiniPieChart {...getCountsForCategory(workTasks)} />
+                </div>
+              )}
               <form onSubmit={(e) => addTask(e, dateStr, 'work')} className={styles.todoInputFormSmall}>
-                <input
-                  type="text"
-                  value={newTaskTexts[`${dateStr}_work`] || ''}
-                  onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_work`]: e.target.value })}
-                  placeholder="Add task"
-                  className={styles.todoInputSmall}
-                />
+                <div className={styles.todoInputWrapper}>
+                  <input
+                    type="text"
+                    value={newTaskTexts[`${dateStr}_work`] || ''}
+                    onChange={(e) => setNewTaskTexts({ ...newTaskTexts, [`${dateStr}_work`]: e.target.value })}
+                    placeholder="Add task"
+                    className={styles.todoInputSmall}
+                  />
+                  <button
+                    type="submit"
+                    className={styles.todoInputSubmitBtn}
+                    disabled={!newTaskTexts[`${dateStr}_work`]?.trim()}
+                  >
+                    <ArrowRight size={14} weight="bold" />
+                  </button>
+                </div>
               </form>
-              <div className={styles.todoItems}>
-                {workTasks.map(task => {
-                  const taskState = task.state || (task.completed ? 'completed' : 'active');
-                  return (
-                    <div
-                      key={task.id}
-                      className={`${styles.todoItem} ${styles[taskState] || ''}`}
-                      onClick={() => toggleTask(dateStr, task.id)}
-                    >
-                      <div className={styles.todoItemContent}>
-                        <button
-                          type="button"
-                          className={`${styles.todoCheckBtn} ${styles[taskState] || ''}`}
-                        >
-                          {taskState === 'completed' && <Check size={12} weight="bold" />}
-                          {taskState === 'failed' && <X size={12} weight="bold" />}
-                        </button>
-                        <span className={styles.todoText}>{task.text}</span>
-                      </div>
-
-                      <div className={styles.todoActions}>
-                        <button
-                          className={styles.todoCloneBtn}
-                          onClick={(e) => { e.stopPropagation(); puntTask(dateStr, task.id); }}
-                          title="Fail & Punt to Next Day"
-                        >
-                          <ArrowBendDownRight size={14} />
-                        </button>
-                        <button
-                          className={styles.todoDeleteBtn}
-                          onClick={(e) => { e.stopPropagation(); deleteTask(dateStr, task.id); }}
-                        >
-                          <Trash size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {renderTasksWithAccordions(workTasks, dateStr, 'work')}
             </div>
           )}
         </div>
@@ -361,13 +760,13 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
         headerControls={
           <div className={styles.weekCategoryToggle}>
             <button
-              className={`${styles.toggleBtn} ${weekCategory === 'life' ? styles.active : ''}`}
+              className={`${styles.toggleBtn} ${weekCategory === 'life' ? styles.active : ''} `}
               onClick={() => setWeekCategory('life')}
             >
               Life
             </button>
             <button
-              className={`${styles.toggleBtn} ${weekCategory === 'work' ? styles.active : ''}`}
+              className={`${styles.toggleBtn} ${weekCategory === 'work' ? styles.active : ''} `}
               onClick={() => setWeekCategory('work')}
             >
               Work
@@ -384,6 +783,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
       className={styles.todosScrollContainer}
       columnClassName={styles.todoColumn}
       onMoreClick={() => setViewMode('week')}
+      moreOverride="Week View"
     />
   );
 }

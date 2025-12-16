@@ -5,6 +5,7 @@ export interface Habit {
   defaultTime: 'morning' | 'night' | 'neither' | 'health' | 'exercise' | 'weekdays' | 'quitting' | 'growth'; // weekdays not used in app rn
   active: boolean;
   createdDate: string;
+  comment?: string | null;
 }
 
 export interface HabitEntry {

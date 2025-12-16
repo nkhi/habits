@@ -41,6 +41,11 @@ interface DayWeekProps {
    * Optional: Callback when the "More" button is clicked.
    */
   onMoreClick?: () => void;
+
+  /**
+   * Optional: Custom text for the "More" button.
+   */
+  moreOverride?: string;
 }
 
 /**
@@ -61,7 +66,8 @@ export function DayWeek({
   futureDays = 14,
   className,
   columnClassName,
-  onMoreClick
+  onMoreClick,
+  moreOverride
 }: DayWeekProps) {
   const [dates, setDates] = useState<Date[]>([]);
   const [focusedDateStr, setFocusedDateStr] = useState<string>('');
@@ -163,7 +169,7 @@ export function DayWeek({
           weight="fill"
           size={20}
         />
-        <span>More</span>
+        <span>{moreOverride ? moreOverride : 'More'}</span>
       </button>
 
       {/* Floating "Back to Today" button */}

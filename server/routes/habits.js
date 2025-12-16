@@ -15,7 +15,8 @@ router.get('/habits', async (req, res) => {
     const habits = result.rows.map(h => ({
       ...h,
       defaultTime: h.default_time, // map snake_case to camelCase
-      createdDate: h.created_date
+      createdDate: h.created_date,
+      comment: h.comment || null
     }));
     
     res.json(habits);

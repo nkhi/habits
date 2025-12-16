@@ -5,7 +5,14 @@ import type { DiaryEntry, Question } from '../../types';
 import { generateId } from '../../utils';
 import { DayWeek, type DayWeekColumnData } from '../shared/DayWeek';
 import { QuestionView } from './QuestionView';
+import { TimeInputCard } from './TimeInputCard';
 import styles from './Diary.module.css';
+
+// Question IDs for special time input cards
+const TIME_QUESTION_IDS = {
+  WAKE: 'q13',
+  SLEEP: 'q14'
+};
 
 interface DiaryProps {
   apiBaseUrl: string;
@@ -126,11 +133,27 @@ export function Diary({ apiBaseUrl }: DiaryProps) {
     }
   }
 
+  // Helper to check if a question is a time input type
+  const isTimeQuestion = (questionId: string) =>
+    questionId === TIME_QUESTION_IDS.WAKE || questionId === TIME_QUESTION_IDS.SLEEP;
+
+
+
   const renderDiaryColumn = ({ date, dateStr, isToday }: DayWeekColumnData) => {
     const dayEntries = diary[dateStr] || [];
 
     // Filter questions: Global (no date) OR Ad-hoc for this date
     const dayQuestions = questions.filter(q => !q.date || q.date === dateStr);
+
+    // Separate time questions from regular questions
+    const wakeQuestion = dayQuestions.find(q => q.id === TIME_QUESTION_IDS.WAKE);
+    const sleepQuestion = dayQuestions.find(q => q.id === TIME_QUESTION_IDS.SLEEP);
+    const regularQuestions = dayQuestions.filter(q => !isTimeQuestion(q.id));
+
+    // Get entries for time questions
+    const wakeEntry = dayEntries.find(e => e.questionId === TIME_QUESTION_IDS.WAKE);
+    const sleepEntry = dayEntries.find(e => e.questionId === TIME_QUESTION_IDS.SLEEP);
+
 
     return (
       <>
@@ -144,7 +167,30 @@ export function Diary({ apiBaseUrl }: DiaryProps) {
         </div>
 
         <div className={styles.diaryContent}>
-          {dayQuestions.map(question => {
+          {/* Time Input Cards Row - Wake & Sleep */}
+          {(wakeQuestion || sleepQuestion) && (
+            <div className={styles.timeInputRow}>
+              {wakeQuestion && (
+                <TimeInputCard
+                  questionText={wakeQuestion.text}
+                  value={wakeEntry?.answer || ''}
+                  onChange={(isoDateTime) => handleAnswerChange(dateStr, TIME_QUESTION_IDS.WAKE, isoDateTime)}
+                  type="wake"
+                />
+              )}
+              {sleepQuestion && (
+                <TimeInputCard
+                  questionText={sleepQuestion.text}
+                  value={sleepEntry?.answer || ''}
+                  onChange={(isoDateTime) => handleAnswerChange(dateStr, TIME_QUESTION_IDS.SLEEP, isoDateTime)}
+                  type="sleep"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Regular Questions */}
+          {regularQuestions.map(question => {
             const entry = dayEntries.find(e => e.questionId === question.id);
             const answer = entry ? entry.answer : '';
 
@@ -184,6 +230,7 @@ export function Diary({ apiBaseUrl }: DiaryProps) {
       </>
     );
   };
+
 
   if (viewMode === 'question') {
     return <QuestionView apiBaseUrl={apiBaseUrl} onBack={() => setViewMode('day')} />;

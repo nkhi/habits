@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { getHabits, getEntries, saveEntry } from '../../api/habits';
 import { getVlog, saveVlog } from '../../api/vlogs';
 import type { Habit, HabitEntry, Vlog } from '../../types';
@@ -43,6 +43,11 @@ export function HabitTracker({ apiBaseUrl }: HabitTrackerProps) {
   const [dynamicRowHeight, setDynamicRowHeight] = useState<number | null>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const recordingWeekRef = useRef<Date | null>(null);
+
+  // Comment tooltip state
+  const [hoveredHabitId, setHoveredHabitId] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const hoverTimerRef = useRef<number | null>(null);
 
   const weeks = useMemo(() => {
     const weeksMap = new Map<string, Date[]>();
@@ -464,6 +469,34 @@ export function HabitTracker({ apiBaseUrl }: HabitTrackerProps) {
     setExpandedWeeks(newExpanded);
   }
 
+  // Comment tooltip handlers
+  const handleHabitNameMouseEnter = useCallback((habitId: string, comment: string | null | undefined, event: React.MouseEvent) => {
+    if (!comment) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    if (hoverTimerRef.current) {
+      window.clearTimeout(hoverTimerRef.current);
+    }
+
+    hoverTimerRef.current = window.setTimeout(() => {
+      setHoveredHabitId(habitId);
+      setTooltipPosition({
+        x: rect.right,
+        y: rect.top + rect.height / 2
+      });
+    }, 1500); // 1.5 second delay
+  }, []);
+
+  const handleHabitNameMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) {
+      window.clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setHoveredHabitId(null);
+    setTooltipPosition(null);
+  }, []);
+
   if (isLoading || habits.length === 0 || dates.length === 0) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -593,7 +626,13 @@ export function HabitTracker({ apiBaseUrl }: HabitTrackerProps) {
                         <HabitTimeIcon defaultTime={habit.defaultTime} size={20} />
                       </span>
                       <div className={styles.habitNameText}>
-                        <span>{habit.name}</span>
+                        <span
+                          className={habit.comment ? styles.habitNameWithComment : undefined}
+                          onMouseEnter={(e) => handleHabitNameMouseEnter(habit.id, habit.comment, e)}
+                          onMouseLeave={handleHabitNameMouseLeave}
+                        >
+                          {habit.name}
+                        </span>
                         {getCurrentStreak(habit.id) > 0 && (
                           <span className={styles.streakBadge}>
                             <span className={styles.streakIcon}>
@@ -766,6 +805,19 @@ export function HabitTracker({ apiBaseUrl }: HabitTrackerProps) {
           vlog={viewingVlog}
           onClose={() => setViewingVlog(null)}
         />
+      )}
+
+      {/* Comment Tooltip */}
+      {hoveredHabitId && tooltipPosition && (
+        <div
+          className={styles.habitCommentTooltip}
+          style={{
+            left: tooltipPosition.x,
+            top: tooltipPosition.y
+          }}
+        >
+          {habits.find(h => h.id === hoveredHabitId)?.comment}
+        </div>
       )}
     </>
   );

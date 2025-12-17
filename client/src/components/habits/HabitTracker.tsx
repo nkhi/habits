@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { getHabits, getEntries, saveEntry } from '../../api/habits';
-import { getVlog, saveVlog } from '../../api/vlogs';
+import { getVlogsBatch, saveVlog } from '../../api/vlogs';
 import type { Habit, HabitEntry, Vlog } from '../../types';
 import { DateUtility, getGrade, generateId } from '../../utils';
 import VlogModal from './VlogModal';
@@ -280,15 +280,12 @@ export function HabitTracker({ apiBaseUrl }: HabitTrackerProps) {
       }
     });
 
+    // Single batch API call instead of N individual calls
+    const vlogsData = await getVlogsBatch(apiBaseUrl, Array.from(weeks));
     const vlogsMap = new Map<string, Vlog>();
-    await Promise.all(
-      Array.from(weeks).map(async (weekStart) => {
-        const vlog = await getVlog(apiBaseUrl, weekStart);
-        if (vlog) {
-          vlogsMap.set(weekStart, vlog);
-        }
-      })
-    );
+    Object.entries(vlogsData).forEach(([weekStart, vlog]) => {
+      vlogsMap.set(weekStart, vlog as Vlog);
+    });
     setVlogs(vlogsMap);
   }
 

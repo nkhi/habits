@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import * as db from '../db.ts';
-import type { DbList, DbListItem, List, ListItem, CreateListRequest, UpdateListRequest } from '../types.ts';
+import type { DbList, DbListItem } from '../db-types.ts';
+import type { List, ListItem, CreateListRequest, UpdateListRequest } from '../../shared/types.ts';
 
 const router = express.Router();
 

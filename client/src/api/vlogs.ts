@@ -1,8 +1,20 @@
-import type { Vlog } from '../types';
+import type { Vlog, VlogsByWeek } from '../../shared/types';
 
 export async function getVlog(baseUrl: string, weekStartDate: string): Promise<Vlog | null> {
   const response = await fetch(`${baseUrl}/vlogs/${weekStartDate}`);
   if (!response.ok) throw new Error('Failed to fetch vlog');
+  return response.json();
+}
+
+export async function getVlogsBatch(baseUrl: string, weekStartDates: string[]): Promise<VlogsByWeek> {
+  if (weekStartDates.length === 0) return {};
+  
+  const response = await fetch(`${baseUrl}/vlogs/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ weekStartDates })
+  });
+  if (!response.ok) throw new Error('Failed to fetch vlogs batch');
   return response.json();
 }
 

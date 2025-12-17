@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import * as db from '../db.ts';
-import type { DbVlog, Vlog, CreateVlogRequest } from '../types.ts';
+import type { DbVlog } from '../db-types.ts';
+import type { Vlog, CreateVlogRequest, BatchVlogsRequest, VlogsByWeek } from '../../shared/types.ts';
 
 const router = express.Router();
 
@@ -15,8 +16,11 @@ router.get('/vlogs/:weekStartDate', async (req: Request<{ weekStartDate: string 
     if (result.rows.length === 0) return res.json(null);
     
     const v = result.rows[0];
+    const weekStartStr = typeof v.week_start_date === 'string' 
+      ? v.week_start_date 
+      : v.week_start_date.toISOString().split('T')[0];
     const vlog: Vlog = {
-      weekStartDate: v.week_start_date,
+      weekStartDate: weekStartStr,
       videoUrl: v.video_url,
       embedHtml: v.embed_html
     };
@@ -49,4 +53,37 @@ router.post('/vlogs', async (req: Request<object, object, CreateVlogRequest>, re
   }
 });
 
+// Batch get vlogs for multiple weeks (replaces N individual calls with 1)
+router.post('/vlogs/batch', async (req: Request<object, object, BatchVlogsRequest>, res: Response) => {
+  const { weekStartDates } = req.body;
+  
+  if (!weekStartDates || !Array.isArray(weekStartDates) || weekStartDates.length === 0) {
+    return res.status(400).json({ error: 'weekStartDates must be a non-empty array' });
+  }
+  
+  try {
+    const result = await db.query<DbVlog>(`
+      SELECT * FROM vlogs WHERE week_start_date = ANY($1)
+    `, [weekStartDates]);
+    
+    const vlogsByWeek: VlogsByWeek = {};
+    result.rows.forEach(v => {
+      const weekStart = typeof v.week_start_date === 'string' 
+        ? v.week_start_date 
+        : v.week_start_date.toISOString().split('T')[0];
+      vlogsByWeek[weekStart] = {
+        weekStartDate: weekStart,
+        videoUrl: v.video_url,
+        embedHtml: v.embed_html
+      };
+    });
+    
+    res.json(vlogsByWeek);
+  } catch (e) {
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
+

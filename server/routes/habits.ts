@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import * as db from '../db.ts';
-import type { DbHabit, DbEntry, Habit, Entry, CreateHabitEntryRequest } from '../types.ts';
+import type { DbHabit, DbEntry } from '../db-types.ts';
+import type { Habit, HabitEntry, CreateHabitEntryRequest } from '../../shared/types.ts';
 
 const router = express.Router();
 

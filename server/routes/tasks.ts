@@ -1,12 +1,13 @@
 import express, { Request, Response } from 'express';
 import * as db from '../db.ts';
 import { logToFile } from '../logger.ts';
+import type { DbTask } from '../db-types.ts';
 import type { 
-  DbTask, Task, TasksByDate, GroupedTasks, TaskCounts,
+  Task, TasksByDate, GroupedTasks, TaskCounts,
   CreateTaskRequest, UpdateTaskRequest, ReorderRequest,
   BatchPuntRequest, BatchFailRequest, BatchReorderRequest
-} from '../types.ts';
-import { formatDate } from '../types.ts';
+} from '../../shared/types.ts';
+import { formatDate } from '../../shared/types.ts';
 
 const router = express.Router();
 

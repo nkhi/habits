@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import * as db from '../db.ts';
-import type { DbNextItem, NextItem, CreateNextItemRequest, UpdateNextItemRequest } from '../types.ts';
+import type { DbNextItem } from '../db-types.ts';
+import type { Note, CreateNoteRequest, UpdateNoteRequest } from '../../shared/types.ts';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.get('/next', async (_req: Request, res: Response) => {
       WHERE deleted_at IS NULL AND started_at IS NULL
     `);
     
-    const items: NextItem[] = result.rows.map(item => ({
+    const items: Note[] = result.rows.map(item => ({
       id: item.id,
       title: item.title,
       content: item.content,
@@ -31,7 +32,7 @@ router.get('/next', async (_req: Request, res: Response) => {
 });
 
 // Add a new next item
-router.post('/next', async (req: Request<object, object, CreateNextItemRequest>, res: Response) => {
+router.post('/next', async (req: Request<object, object, CreateNoteRequest>, res: Response) => {
   const { id, title, content, color, size } = req.body;
   if (!id || !title) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -44,7 +45,7 @@ router.post('/next', async (req: Request<object, object, CreateNextItemRequest>,
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [id, title, content || '', color || '#2D2D2D', size || 'medium', createdAt]);
     
-    const item: NextItem = {
+    const item: Note = {
       id, 
       title, 
       content: content || '', 
@@ -62,7 +63,7 @@ router.post('/next', async (req: Request<object, object, CreateNextItemRequest>,
 });
 
 // Update a next item
-router.patch('/next/:id', async (req: Request<{ id: string }, object, UpdateNextItemRequest>, res: Response) => {
+router.patch('/next/:id', async (req: Request<{ id: string }, object, UpdateNoteRequest>, res: Response) => {
   const { id } = req.params;
   const updates = req.body;
   
@@ -93,7 +94,7 @@ router.patch('/next/:id', async (req: Request<{ id: string }, object, UpdateNext
     }
     
     const item = result.rows[0];
-    const response: NextItem = {
+    const response: Note = {
       id: item.id,
       title: item.title,
       content: item.content,

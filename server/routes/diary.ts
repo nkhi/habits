@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
 import * as db from '../db.ts';
-import type { DbQuestion, CreateQuestionRequest, DbDiaryEntry, DiaryEntry, DiaryByDate, CreateDiaryEntryRequest, UpdateDiaryEntryRequest } from '../types.ts';
-import { formatDate } from '../types.ts';
+import type { DbQuestion, DbDiaryEntry } from '../db-types.ts';
+import type { DiaryEntry, DiaryByDate, CreateQuestionRequest, CreateDiaryEntryRequest, UpdateDiaryEntryRequest } from '../../shared/types.ts';
+import { formatDate } from '../../shared/types.ts';
 
 const router = express.Router();
 

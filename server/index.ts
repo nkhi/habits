@@ -1,6 +1,14 @@
-const express = require('express');
-const cors = require('cors');
-const { logToFile } = require('./logger');
+import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
+import { logToFile } from './logger.ts';
+
+// Import routes
+import habitsRoutes from './routes/habits.ts';
+import vlogsRoutes from './routes/vlogs.ts';
+import tasksRoutes from './routes/tasks.ts';
+import diaryRoutes from './routes/diary.ts';
+import nextRoutes from './routes/next.ts';
+import listsRoutes from './routes/lists.ts';
 
 console.log('[SERVER] 🏁 Starting server process...');
 
@@ -8,8 +16,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Extended Response type for logging
+interface LoggingResponse extends Response {
+  locals: {
+    responseBody?: unknown;
+  };
+}
+
 // Comprehensive logging middleware
-app.use((req, res, next) => {
+app.use((req: Request, res: LoggingResponse, next: NextFunction) => {
   // Skip logging for health checks to keep console clean
   if (req.path === '/health') {
     return next();
@@ -18,11 +33,11 @@ app.use((req, res, next) => {
   const start = Date.now();
   
   // Wrap res.json to capture body for logging
-  const originalJson = res.json;
-  res.json = function (body) {
+  const originalJson = res.json.bind(res);
+  res.json = function (body: unknown) {
     res.locals = res.locals || {};
     res.locals.responseBody = body;
-    return originalJson.call(this, body);
+    return originalJson(body);
   };
 
   res.on('finish', () => {
@@ -56,20 +71,20 @@ app.use((req, res, next) => {
 // --- API Endpoints ---
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Mount routes
-app.use('/', require('./routes/habits'));
-app.use('/', require('./routes/vlogs'));
-app.use('/', require('./routes/tasks'));
-app.use('/', require('./routes/diary'));
-app.use('/', require('./routes/next'));
-app.use('/', require('./routes/lists'));
+app.use('/', habitsRoutes);
+app.use('/', vlogsRoutes);
+app.use('/', tasksRoutes);
+app.use('/', diaryRoutes);
+app.use('/', nextRoutes);
+app.use('/', listsRoutes);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log('\n' + '='.repeat(60));
   console.log(`[SERVER] 🚀 API running on http://0.0.0.0:${PORT}`);
   console.log(`[SERVER] 🐘 Connected to CockroachDB`);

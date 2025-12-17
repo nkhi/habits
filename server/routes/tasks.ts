@@ -1,129 +1,117 @@
-const express = require('express');
+import express, { Request, Response } from 'express';
+import * as db from '../db.ts';
+import { logToFile } from '../logger.ts';
+import type { 
+  DbTask, Task, TasksByDate, GroupedTasks, TaskCounts,
+  CreateTaskRequest, UpdateTaskRequest, ReorderRequest,
+  BatchPuntRequest, BatchFailRequest, BatchReorderRequest
+} from '../types.ts';
+import { formatDate } from '../types.ts';
+
 const router = express.Router();
-const db = require('../db');
-const { logToFile } = require('../logger');
+
+// Helper to transform DB row to API response
+function dbTaskToTask(t: DbTask): Task {
+  return {
+    id: t.id,
+    text: t.text,
+    completed: t.completed ?? false,
+    date: formatDate(t.date!),
+    createdAt: t.created_at?.toISOString() || new Date().toISOString(),
+    category: t.category || 'life',
+    state: t.state || 'active',
+    order: t.order
+  };
+}
 
 // Get tasks for a specific week/range
-router.get('/tasks/week', async (req, res) => {
-  const { start, end } = req.query;
+router.get('/tasks/week', async (req: Request, res: Response) => {
+  const { start, end } = req.query as { start?: string; end?: string };
   if (!start || !end) {
     return res.status(400).json({ error: 'Missing start/end date parameters' });
   }
 
   try {
-    const result = await db.query(`
+    const result = await db.query<DbTask>(`
       SELECT * FROM tasks 
       WHERE date >= $1 AND date <= $2
     `, [start, end]);
 
-    // Convert flat DB rows back to date-keyed object
-    const tasksByDate = {};
+    const tasksByDate: TasksByDate = {};
     result.rows.forEach(t => {
-      const dateStr = typeof t.date === 'string' ? t.date : t.date.toISOString().split('T')[0];
-
+      const dateStr = formatDate(t.date!);
       if (!tasksByDate[dateStr]) tasksByDate[dateStr] = [];
-
-      tasksByDate[dateStr].push({
-        id: t.id,
-        text: t.text,
-        completed: t.completed,
-        date: dateStr,
-        createdAt: t.created_at,
-        category: t.category,
-        state: t.state,
-        order: t.order
-      });
+      tasksByDate[dateStr].push(dbTaskToTask(t));
     });
     res.json(tasksByDate);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get only work tasks (for work mode - privacy on work laptops)
-router.get('/tasks/work', async (req, res) => {
+router.get('/tasks/work', async (_req: Request, res: Response) => {
   try {
-    const result = await db.query(`SELECT * FROM tasks WHERE category = 'work'`);
+    const result = await db.query<DbTask>(`SELECT * FROM tasks WHERE category = 'work'`);
 
-    const tasksByDate = {};
+    const tasksByDate: TasksByDate = {};
     result.rows.forEach(t => {
-      const dateStr = typeof t.date === 'string' ? t.date : t.date.toISOString().split('T')[0];
+      const dateStr = formatDate(t.date!);
       if (!tasksByDate[dateStr]) tasksByDate[dateStr] = [];
-      tasksByDate[dateStr].push({
-        id: t.id,
-        text: t.text,
-        completed: t.completed,
-        date: dateStr,
-        createdAt: t.created_at,
-        category: t.category,
-        state: t.state,
-        order: t.order
-      });
+      tasksByDate[dateStr].push(dbTaskToTask(t));
     });
     res.json(tasksByDate);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get all tasks (bulk fetch for initial load)
-router.get('/tasks', async (req, res) => {
+router.get('/tasks', async (_req: Request, res: Response) => {
   try {
-    const result = await db.query('SELECT * FROM tasks');
+    const result = await db.query<DbTask>('SELECT * FROM tasks');
 
-    // Convert flat DB rows back to date-keyed object
-    const tasksByDate = {};
+    const tasksByDate: TasksByDate = {};
     result.rows.forEach(t => {
-      // Format date to YYYY-MM-DD string if it's a Date object
-      const dateStr = typeof t.date === 'string' ? t.date : t.date.toISOString().split('T')[0];
-
+      const dateStr = formatDate(t.date!);
       if (!tasksByDate[dateStr]) tasksByDate[dateStr] = [];
-
-      tasksByDate[dateStr].push({
-        id: t.id,
-        text: t.text,
-        completed: t.completed,
-        date: dateStr,
-        createdAt: t.created_at,
-        category: t.category,
-        state: t.state,
-        order: t.order
-      });
+      tasksByDate[dateStr].push(dbTaskToTask(t));
     });
     res.json(tasksByDate);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get task counts by state for each date
-router.get('/tasks/counts', async (req, res) => {
-  const { category } = req.query; // Optional: filter by category (life/work)
+router.get('/tasks/counts', async (req: Request, res: Response) => {
+  const { category } = req.query as { category?: string };
   
   try {
-    let query = 'SELECT date, state, completed, COUNT(*) as count FROM tasks';
-    const params = [];
+    let queryText = 'SELECT date, state, completed, COUNT(*) as count FROM tasks';
+    const params: string[] = [];
     
     if (category) {
-      query += ' WHERE category = $1';
+      queryText += ' WHERE category = $1';
       params.push(category);
     }
     
-    query += ' GROUP BY date, state, completed';
+    queryText += ' GROUP BY date, state, completed';
     
-    const result = await db.query(query, params);
+    const result = await db.query<{ date: Date; state: string | null; completed: boolean | null; count: string }>(queryText, params);
 
-    // Build counts by date
-    const countsByDate = {};
+    const countsByDate: TaskCounts = {};
     
     result.rows.forEach(row => {
-      const dateStr = typeof row.date === 'string' ? row.date : row.date.toISOString().split('T')[0];
+      const dateStr = formatDate(row.date);
       
       if (!countsByDate[dateStr]) {
         countsByDate[dateStr] = { active: 0, completed: 0, failed: 0 };
       }
       
-      // Determine state (handle legacy tasks without state field)
       const state = row.state || (row.completed ? 'completed' : 'active');
       const count = parseInt(row.count, 10);
       
@@ -138,51 +126,36 @@ router.get('/tasks/counts', async (req, res) => {
     
     res.json(countsByDate);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Get tasks grouped by state (active, completed, failed) for each date
-router.get('/tasks/grouped', async (req, res) => {
-  const { category } = req.query; // Optional: filter by category (life/work)
+router.get('/tasks/grouped', async (req: Request, res: Response) => {
+  const { category } = req.query as { category?: string };
   
   try {
-    let query = 'SELECT * FROM tasks';
-    const params = [];
+    let queryText = 'SELECT * FROM tasks';
+    const params: string[] = [];
     
     if (category) {
-      query += ' WHERE category = $1';
+      queryText += ' WHERE category = $1';
       params.push(category);
     }
     
-    const result = await db.query(query, params);
+    const result = await db.query<DbTask>(queryText, params);
 
-    // Group tasks by date, then by state
-    const groupedByDate = {};
+    const groupedByDate: GroupedTasks = {};
     
     result.rows.forEach(t => {
-      const dateStr = typeof t.date === 'string' ? t.date : t.date.toISOString().split('T')[0];
+      const dateStr = formatDate(t.date!);
       
       if (!groupedByDate[dateStr]) {
-        groupedByDate[dateStr] = {
-          active: [],
-          completed: [],
-          failed: []
-        };
+        groupedByDate[dateStr] = { active: [], completed: [], failed: [] };
       }
       
-      const task = {
-        id: t.id,
-        text: t.text,
-        completed: t.completed,
-        date: dateStr,
-        createdAt: t.created_at,
-        category: t.category,
-        state: t.state || 'active',
-        order: t.order
-      };
-      
-      // Determine state (handle legacy tasks without state field)
+      const task = dbTaskToTask(t);
       const state = t.state || (t.completed ? 'completed' : 'active');
       
       if (state === 'completed') {
@@ -196,12 +169,13 @@ router.get('/tasks/grouped', async (req, res) => {
     
     res.json(groupedByDate);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Create a single task
-router.post('/tasks', async (req, res) => {
+router.post('/tasks', async (req: Request<object, object, CreateTaskRequest>, res: Response) => {
   const { id, text, completed, date, createdAt, category, state, order } = req.body;
   if (!id || !date) {
     return res.status(400).json({ error: 'Missing required fields: id, date' });
@@ -224,18 +198,18 @@ router.post('/tasks', async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Update a single task
-router.patch('/tasks/:id', async (req, res) => {
+router.patch('/tasks/:id', async (req: Request<{ id: string }, object, UpdateTaskRequest>, res: Response) => {
   const { id } = req.params;
   const updates = req.body;
 
-  // Build dynamic update query
-  const fields = [];
-  const values = [id];
+  const fields: string[] = [];
+  const values: unknown[] = [id];
   let idx = 2;
 
   if (updates.text !== undefined) {
@@ -264,11 +238,11 @@ router.patch('/tasks/:id', async (req, res) => {
   }
 
   if (fields.length === 0) {
-    return res.json({ ok: true }); // Nothing to update
+    return res.json({ ok: true });
   }
 
   try {
-    const result = await db.query(`
+    const result = await db.query<DbTask>(`
       UPDATE tasks 
       SET ${fields.join(', ')}
       WHERE id = $1
@@ -282,30 +256,19 @@ router.patch('/tasks/:id', async (req, res) => {
       return res.status(404).json({ error: `Task with ID ${id} not found` });
     }
 
-    const t = result.rows[0];
-    const dateStr = typeof t.date === 'string' ? t.date : t.date.toISOString().split('T')[0];
-
-    res.json({
-      id: t.id,
-      text: t.text,
-      completed: t.completed,
-      date: dateStr,
-      createdAt: t.created_at,
-      category: t.category,
-      state: t.state,
-      order: t.order
-    });
+    res.json(dbTaskToTask(result.rows[0]));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Delete a single task
-router.delete('/tasks/:id', async (req, res) => {
+router.delete('/tasks/:id', async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
 
   try {
-    const result = await db.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
+    const result = await db.query<{ id: string }>('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Task not found' });
@@ -313,12 +276,13 @@ router.delete('/tasks/:id', async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Update a single task by ID (PUT)
-router.put('/tasks/:id', async (req, res) => {
+router.put('/tasks/:id', async (req: Request<{ id: string }, object, Partial<Task>>, res: Response) => {
   const taskId = req.params.id;
   const task = req.body;
 
@@ -347,14 +311,15 @@ router.put('/tasks/:id', async (req, res) => {
 
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
 // Batch punt tasks (mark as failed + create new tasks for next day)
-router.post('/tasks/batch/punt', async (req, res) => {
+router.post('/tasks/batch/punt', async (req: Request<object, object, BatchPuntRequest>, res: Response) => {
   const { taskIds, sourceDate, targetDate } = req.body;
   
   if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
@@ -368,26 +333,24 @@ router.post('/tasks/batch/punt', async (req, res) => {
   try {
     await client.query('BEGIN');
     
-    // Get all tasks to punt
-    const tasksResult = await client.query(
+    const tasksResult = await client.query<DbTask>(
       'SELECT * FROM tasks WHERE id = ANY($1)',
       [taskIds]
     );
     
-    const newTasks = [];
+    const newTasks: Task[] = [];
     
     for (const task of tasksResult.rows) {
-      // Mark original as failed
       await client.query(
         'UPDATE tasks SET state = $1, completed = $2 WHERE id = $3',
         ['failed', false, task.id]
       );
       
-      // Create new task for target date
       const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const createdAt = new Date().toISOString();
       await client.query(
         'INSERT INTO tasks (id, text, completed, date, created_at, category, state) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [newId, task.text, false, targetDate, new Date().toISOString(), task.category, 'active']
+        [newId, task.text, false, targetDate, createdAt, task.category, 'active']
       );
       
       newTasks.push({
@@ -395,9 +358,10 @@ router.post('/tasks/batch/punt', async (req, res) => {
         text: task.text,
         completed: false,
         date: targetDate,
-        createdAt: new Date().toISOString(),
-        category: task.category,
-        state: 'active'
+        createdAt,
+        category: task.category || 'life',
+        state: 'active',
+        order: null
       });
     }
     
@@ -405,14 +369,15 @@ router.post('/tasks/batch/punt', async (req, res) => {
     res.json({ ok: true, newTasks });
   } catch (e) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
 // Batch fail tasks
-router.post('/tasks/batch/fail', async (req, res) => {
+router.post('/tasks/batch/fail', async (req: Request<object, object, BatchFailRequest>, res: Response) => {
   const { taskIds } = req.body;
   
   if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
@@ -432,14 +397,15 @@ router.post('/tasks/batch/fail', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
 // Reorder a task (update order, optionally move to new date/category)
-router.patch('/tasks/:id/reorder', async (req, res) => {
+router.patch('/tasks/:id/reorder', async (req: Request<{ id: string }, object, ReorderRequest>, res: Response) => {
   const { id } = req.params;
   const { order, date, category, state } = req.body;
 
@@ -448,7 +414,7 @@ router.patch('/tasks/:id/reorder', async (req, res) => {
   }
 
   const fields = ['"order" = $2'];
-  const values = [id, order];
+  const values: unknown[] = [id, order];
   let idx = 3;
 
   if (date !== undefined) {
@@ -465,7 +431,7 @@ router.patch('/tasks/:id/reorder', async (req, res) => {
   }
 
   try {
-    const result = await db.query(`
+    const result = await db.query<DbTask>(`
       UPDATE tasks 
       SET ${fields.join(', ')}
       WHERE id = $1
@@ -476,26 +442,15 @@ router.patch('/tasks/:id/reorder', async (req, res) => {
       return res.status(404).json({ error: `Task with ID ${id} not found` });
     }
 
-    const t = result.rows[0];
-    const dateStr = typeof t.date === 'string' ? t.date : t.date.toISOString().split('T')[0];
-
-    res.json({
-      id: t.id,
-      text: t.text,
-      completed: t.completed,
-      date: dateStr,
-      createdAt: t.created_at,
-      category: t.category,
-      state: t.state,
-      order: t.order
-    });
+    res.json(dbTaskToTask(result.rows[0]));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Batch reorder tasks (for future multi-selection drag)
-router.post('/tasks/batch/reorder', async (req, res) => {
+router.post('/tasks/batch/reorder', async (req: Request<object, object, BatchReorderRequest>, res: Response) => {
   const { moves } = req.body;
   
   if (!moves || !Array.isArray(moves) || moves.length === 0) {
@@ -511,7 +466,7 @@ router.post('/tasks/batch/reorder', async (req, res) => {
       if (!id || !order) continue;
       
       const fields = ['"order" = $2'];
-      const values = [id, order];
+      const values: unknown[] = [id, order];
       let idx = 3;
 
       if (date !== undefined) {
@@ -536,10 +491,11 @@ router.post('/tasks/batch/reorder', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
-module.exports = router;
+export default router;

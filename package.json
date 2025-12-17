@@ -1,0 +1,12 @@
+{
+  "name": "habits",
+  "private": true,
+  "scripts": {
+    "install:all": "bun install --cwd client && bun install --cwd server",
+    "dev": "bun run dev:client & bun run dev:server",
+    "dev:client": "cd client && bun run dev",
+    "dev:server": "cd server && bun run dev",
+    "build": "cd client && bun run build",
+    "start": "cd server && bun run start"
+  }
+}

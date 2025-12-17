@@ -1,12 +1,15 @@
 #!/bin/bash
 
+# Add Bun to PATH (installed via bun.sh)
+export PATH="$HOME/.bun/bin:$PATH"
+
 # Function to cleanup background processes
 cleanup() {
   echo -e "\n\n[SHUTDOWN] Stopping server..."
   if [ ! -z "$SERVER_PID" ]; then
     # Kill the loop process
     kill $SERVER_PID 2>/dev/null
-    # Kill any child processes (the actual node server)
+    # Kill any child processes (the actual bun server)
     pkill -P $SERVER_PID 2>/dev/null
   fi
   exit 0
@@ -21,8 +24,8 @@ cd server
 # Run in a loop to auto-restart on crash
 (
   while true; do
-    echo "[SERVER] 🚀 Starting Node.js server..."
-    node index.js
+    echo "[SERVER] 🚀 Starting Bun server..."
+    bun run index.ts
     echo "[SERVER] 💥 Server crashed or stopped. Restarting in 1 second..."
     sleep 1
   done
@@ -38,7 +41,7 @@ cd client
 
 # Start Vite dev server in foreground (this will show all output)
 echo "Starting Vite dev server..."
-pnpm run dev -- --host 0.0.0.0
+bun run dev -- --host 0.0.0.0
 
 # When Vite stops (Ctrl+C), cleanup will kill the server
 cleanup

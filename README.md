@@ -54,8 +54,7 @@ Google Keep-style cards for ideas on what to do next. Mosaic tile layout with va
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v16+)
-- pnpm
+- [Bun](https://bun.sh/) (v1.0+) - runtime and package manager
 - CockroachDB (or any PostgreSQL-compatible database)
 
 ### Installation
@@ -66,13 +65,18 @@ Google Keep-style cards for ideas on what to do next. Mosaic tile layout with va
    cd habits
    ```
 
-2. **Install dependencies**
+2. **Install Bun** (if not already installed)
    ```bash
-   cd server && npm install && cd ..
-   cd client && pnpm install && cd ..
+   curl -fsSL https://bun.sh/install | bash
    ```
 
-3. **Configure the database**
+3. **Install dependencies**
+   ```bash
+   bun install --cwd client
+   bun install --cwd server
+   ```
+
+4. **Configure the database**
    
    Create a `.env` file in the `server/` directory:
    ```bash
@@ -80,7 +84,7 @@ Google Keep-style cards for ideas on what to do next. Mosaic tile layout with va
    DATABASE_URL=<your-cockroachdb-connection-string>
    ```
 
-4. **Start the app**
+5. **Start the app**
    ```bash
    ./go.sh
    ```
@@ -128,7 +132,8 @@ habits/
 ## Tech Stack
 
 - **Web Client**: React + TypeScript + Vite
-- **API Server**: Node.js + Express
+- **API Server**: Bun + Express (ESM)
+- **Runtime/Package Manager**: Bun
 - **Database**: CockroachDB (PostgreSQL-compatible)
 - **Styling**: CSS Modules with Phosphor Icons
 - **Video**: Loom SDK
@@ -162,17 +167,18 @@ Thank you Venture Capitalist who is paying for me to improve myself. I will eat 
 
 ### Server only
 ```bash
-cd server && node index.js
+cd server && bun run dev      # with auto-reload
+cd server && bun run start    # production mode
 ```
 
 ### Client only
 ```bash
-cd client && pnpm run dev
+cd client && bun run dev
 ```
 
 ### Building for production
 ```bash
-cd client && pnpm run build
+cd client && bun run build
 ```
 
 ### Work Mode

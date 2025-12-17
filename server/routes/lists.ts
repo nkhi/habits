@@ -1,42 +1,50 @@
-const express = require('express');
+import express, { Request, Response } from 'express';
+import * as db from '../db.ts';
+import type { DbList, DbListItem, List, ListItem, CreateListRequest, UpdateListRequest } from '../types.ts';
+
 const router = express.Router();
-const db = require('../db');
 
 // Get all lists
-router.get('/lists', async (req, res) => {
+router.get('/lists', async (_req: Request, res: Response) => {
   try {
     // Fetch lists and items in parallel
     const [listsRes, itemsRes] = await Promise.all([
-      db.query('SELECT * FROM lists'),
-      db.query('SELECT * FROM list_items ORDER BY position ASC')
+      db.query<DbList>('SELECT * FROM lists'),
+      db.query<DbListItem>('SELECT * FROM list_items ORDER BY position ASC')
     ]);
     
     const lists = listsRes.rows.map(l => ({
-      ...l,
-      createdAt: l.created_at,
+      id: l.id,
+      title: l.title,
+      color: l.color,
+      createdAt: l.created_at?.toISOString() || null,
       order: l.order
     }));
     
-    const items = itemsRes.rows.map(i => ({
-      ...i,
+    const items: ListItem[] = itemsRes.rows.map(i => ({
+      id: i.id,
       listId: i.list_id,
-      createdAt: i.created_at
+      text: i.text,
+      completed: i.completed ?? false,
+      createdAt: i.created_at?.toISOString() || null,
+      position: i.position ?? undefined
     }));
     
     // Join them
-    const listsWithItems = lists.map(list => {
+    const listsWithItems: List[] = lists.map(list => {
       const listItems = items.filter(i => i.listId === list.id);
       return { ...list, items: listItems };
     });
     
     res.json(listsWithItems);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Create a new list
-router.post('/lists', async (req, res) => {
+router.post('/lists', async (req: Request<object, object, CreateListRequest>, res: Response) => {
   const { id, title, color, order } = req.body;
   if (!id || !title) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -49,16 +57,18 @@ router.post('/lists', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
     `, [id, title, color || '#2D2D2D', createdAt, order || null]);
     
-    res.json({
-      id, title, color, createdAt, items: [], order
-    });
+    const list: List = {
+      id, title, color: color || '#2D2D2D', createdAt, items: [], order: order || null
+    };
+    res.json(list);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Update a list (title or items)
-router.patch('/lists/:id', async (req, res) => {
+router.patch('/lists/:id', async (req: Request<{ id: string }, object, UpdateListRequest>, res: Response) => {
   const { id } = req.params;
   const updates = req.body;
 
@@ -68,8 +78,8 @@ router.patch('/lists/:id', async (req, res) => {
     
     // 1. Update List Metadata
     if (updates.title || updates.color || updates.order !== undefined) {
-      const fields = [];
-      const values = [id];
+      const fields: string[] = [];
+      const values: unknown[] = [id];
       let idx = 2;
       
       if (updates.title) { fields.push(`title = $${idx++}`); values.push(updates.title); }
@@ -107,26 +117,23 @@ router.patch('/lists/:id', async (req, res) => {
 
     await client.query('COMMIT');
     
-    // Fetch updated list to return
-    // (Simplification: just return what we have, or do a fresh fetch if needed. 
-    // For now, let's just return success/updates as the UI usually updates optimistically)
     res.json({ ...updates, id }); 
   } catch (e) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
 // Delete a list
-router.delete('/lists/:id', async (req, res) => {
+router.delete('/lists/:id', async (req: Request<{ id: string }>, res: Response) => {
   const { id } = req.params;
 
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
-    // Delete items first (foreign key constraint usually handles this if CASCADE, but being safe)
     await client.query('DELETE FROM list_items WHERE list_id = $1', [id]);
     await client.query('DELETE FROM lists WHERE id = $1', [id]);
     await client.query('COMMIT');
@@ -134,14 +141,15 @@ router.delete('/lists/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   } finally {
     client.release();
   }
 });
 
 // Reorder a list (update order only)
-router.patch('/lists/:id/reorder', async (req, res) => {
+router.patch('/lists/:id/reorder', async (req: Request<{ id: string }, object, { order: string }>, res: Response) => {
   const { id } = req.params;
   const { order } = req.body;
 
@@ -150,7 +158,7 @@ router.patch('/lists/:id/reorder', async (req, res) => {
   }
 
   try {
-    const result = await db.query(`
+    const result = await db.query<DbList>(`
       UPDATE lists SET "order" = $2 WHERE id = $1 RETURNING *
     `, [id, order]);
 
@@ -163,12 +171,13 @@ router.patch('/lists/:id/reorder', async (req, res) => {
       id: l.id,
       title: l.title,
       color: l.color,
-      createdAt: l.created_at,
+      createdAt: l.created_at?.toISOString() || null,
       order: l.order
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
-module.exports = router;
+export default router;

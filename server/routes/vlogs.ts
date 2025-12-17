@@ -1,30 +1,34 @@
-const express = require('express');
+import express, { Request, Response } from 'express';
+import * as db from '../db.ts';
+import type { DbVlog, Vlog, CreateVlogRequest } from '../types.ts';
+
 const router = express.Router();
-const db = require('../db');
 
 // Get vlog for a specific week
-router.get('/vlogs/:weekStartDate', async (req, res) => {
+router.get('/vlogs/:weekStartDate', async (req: Request<{ weekStartDate: string }>, res: Response) => {
   const { weekStartDate } = req.params;
   try {
-    const result = await db.query(`
+    const result = await db.query<DbVlog>(`
       SELECT * FROM vlogs WHERE week_start_date = $1
     `, [weekStartDate]);
     
     if (result.rows.length === 0) return res.json(null);
     
     const v = result.rows[0];
-    res.json({
-      weekStartDate: v.week_start_date, // Date object might need formatting? Postgres returns Date object
+    const vlog: Vlog = {
+      weekStartDate: v.week_start_date,
       videoUrl: v.video_url,
       embedHtml: v.embed_html
-    });
+    };
+    res.json(vlog);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Save a vlog for a specific week
-router.post('/vlogs', async (req, res) => {
+router.post('/vlogs', async (req: Request<object, object, CreateVlogRequest>, res: Response) => {
   const { weekStartDate, videoUrl, embedHtml } = req.body;
   if (!weekStartDate || !videoUrl || !embedHtml) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -40,8 +44,9 @@ router.post('/vlogs', async (req, res) => {
     
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
   }
 });
 
-module.exports = router;
+export default router;

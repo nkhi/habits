@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate:themes": "node src/components/daylight/scripts/generatePreview.cjs"
+    "generate:themes": "bun src/components/daylight/scripts/generatePreview.cjs"
   },
   "dependencies": {
     "@atlaskit/icon": "^29.0.0",

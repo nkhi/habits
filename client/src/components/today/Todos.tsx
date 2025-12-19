@@ -678,8 +678,8 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
 
   async function puntTask(dateStr: string, taskId: string) {
     const currentDayTasks = tasks[dateStr] || [];
-    const taskToClone = currentDayTasks.find(t => t.id === taskId);
-    if (!taskToClone) return;
+    const taskToPunt = currentDayTasks.find(t => t.id === taskId);
+    if (!taskToPunt) return;
 
     const today = new Date();
     const todayStr = DateUtility.formatDate(today);
@@ -693,38 +693,36 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
     }
 
     // Calculate puntDays for optimistic update
-    const createdDate = new Date(taskToClone.createdAt.split('T')[0] + 'T00:00:00Z');
+    const createdDate = new Date(taskToPunt.createdAt.split('T')[0] + 'T00:00:00Z');
     const targetDate = new Date(targetDateStr + 'T00:00:00Z');
     const newPuntDays = Math.max(0, Math.floor((targetDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
 
-    const newTask: Task = {
-      ...taskToClone,
-      id: generateId(),
+    // Create the moved task (same ID, new date)
+    const movedTask: Task = {
+      ...taskToPunt,
       date: targetDateStr,
-      createdAt: taskToClone.createdAt, // Preserve original creation date for puntDays tracking
       state: 'active',
       completed: false,
       puntDays: newPuntDays
     };
 
-    console.log('[PUNT] Original task:', { id: taskToClone.id, date: taskToClone.date, createdAt: taskToClone.createdAt, puntDays: taskToClone.puntDays });
-    console.log('[PUNT] New task:', { id: newTask.id, date: newTask.date, createdAt: newTask.createdAt, puntDays: newPuntDays });
+    console.log('[PUNT] Moving task:', { id: taskToPunt.id, from: dateStr, to: targetDateStr, puntDays: newPuntDays });
 
-    // Optimistic update
+    // Optimistic update: REMOVE from source, ADD to target (move, not clone)
     const updatedTasks = { ...tasks };
 
-    updatedTasks[dateStr] = currentDayTasks.map(t =>
-      t.id === taskId ? { ...t, state: 'failed' as const, completed: false } : t
-    );
+    // Remove from source date
+    updatedTasks[dateStr] = currentDayTasks.filter(t => t.id !== taskId);
 
+    // Add to target date
     const targetDayTasks = updatedTasks[targetDateStr] || [];
-    updatedTasks[targetDateStr] = [...targetDayTasks, newTask];
+    updatedTasks[targetDateStr] = [...targetDayTasks, movedTask];
 
     setTasks(updatedTasks);
 
     try {
-      await updateTask(apiBaseUrl, taskId, { state: 'failed', completed: false });
-      await createTask(apiBaseUrl, newTask);
+      // Just update the task's date (move it)
+      await updateTask(apiBaseUrl, taskId, { date: targetDateStr, state: 'active', completed: false });
     } catch (error) {
       console.error('Failed to punt task:', error);
       setTasks(tasks);
@@ -762,22 +760,26 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
     const currentDayTasks = tasks[dateStr] || [];
     const targetDayTasks = tasks[targetDateStr] || [];
 
-    const updatedCurrentDay = currentDayTasks.map(t =>
-      taskIds.includes(t.id) ? { ...t, state: 'failed' as const, completed: false } : t
-    );
+    // Tasks to move (keep same ID, just update date)
+    const tasksToPunt = currentDayTasks.filter(t => taskIds.includes(t.id));
 
-    const newTasks = currentDayTasks
-      .filter(t => taskIds.includes(t.id))
-      .map(t => ({
+    // Calculate puntDays for each moved task
+    const movedTasks = tasksToPunt.map(t => {
+      const createdDate = new Date(t.createdAt.split('T')[0] + 'T00:00:00Z');
+      const targetDate = new Date(targetDateStr + 'T00:00:00Z');
+      const newPuntDays = Math.max(0, Math.floor((targetDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+      return {
         ...t,
-        id: generateId(),
         date: targetDateStr,
-        createdAt: new Date().toISOString(),
         state: 'active' as const,
-        completed: false
-      }));
+        completed: false,
+        puntDays: newPuntDays
+      };
+    });
 
-    const updatedTargetDay = [...targetDayTasks, ...newTasks];
+    // Remove from source, add to target (move, not clone)
+    const updatedCurrentDay = currentDayTasks.filter(t => !taskIds.includes(t.id));
+    const updatedTargetDay = [...targetDayTasks, ...movedTasks];
 
     setTasks(prev => ({
       ...prev,

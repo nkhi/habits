@@ -345,7 +345,7 @@ router.put('/tasks/:id', async (req: Request<{ id: string }, object, Partial<Tas
   }
 });
 
-// Batch punt tasks (mark as failed + create new tasks for next day)
+// Batch punt tasks (move tasks to target date by updating their date)
 router.post('/tasks/batch/punt', async (req: Request<object, object, BatchPuntRequest>, res: Response) => {
   const { taskIds, sourceDate, targetDate } = req.body;
   
@@ -360,41 +360,22 @@ router.post('/tasks/batch/punt', async (req: Request<object, object, BatchPuntRe
   try {
     await client.query('BEGIN');
     
+    // Simply move tasks to target date (update date, keep state as active)
+    await client.query(
+      'UPDATE tasks SET date = $1, state = $2, completed = $3 WHERE id = ANY($4)',
+      [targetDate, 'active', false, taskIds]
+    );
+    
+    // Fetch updated tasks to return
     const tasksResult = await client.query<DbTask>(
       'SELECT * FROM tasks WHERE id = ANY($1)',
       [taskIds]
     );
     
-    const newTasks: Task[] = [];
-    
-    for (const task of tasksResult.rows) {
-      await client.query(
-        'UPDATE tasks SET state = $1, completed = $2 WHERE id = $3',
-        ['failed', false, task.id]
-      );
-      
-      const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      // Preserve original created_at for puntDays tracking
-      const originalCreatedAt = task.created_at?.toISOString() || new Date().toISOString();
-      await client.query(
-        'INSERT INTO tasks (id, text, completed, date, created_at, category, state) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [newId, task.text, false, targetDate, originalCreatedAt, task.category, 'active']
-      );
-      
-      newTasks.push({
-        id: newId,
-        text: task.text,
-        completed: false,
-        date: targetDate,
-        createdAt: originalCreatedAt,
-        category: task.category || 'life',
-        state: 'active',
-        order: null
-      });
-    }
+    const movedTasks: Task[] = tasksResult.rows.map(task => dbTaskToTask(task));
     
     await client.query('COMMIT');
-    res.json({ ok: true, newTasks });
+    res.json({ ok: true, movedTasks });
   } catch (e) {
     await client.query('ROLLBACK');
     const error = e as Error;

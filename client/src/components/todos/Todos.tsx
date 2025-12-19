@@ -140,65 +140,22 @@ function StateOverlayWrapper({ taskId, dateStr, currentState, onSetState, onTogg
 }
 
 /**
- * MiniPieChart - Visual task completion indicator
- * Shows: fresh active (transparent), punted active (yellow), completed (green), failed (red)
+ * StatusBar - Visual task completion indicator
+ * Shows segments for: Completed (green), Failed (red), Punted (yellow), Active (transparent/empty)
  */
-function MiniPieChart({ active, punted, completed, failed }: { active: number; punted: number; completed: number; failed: number }) {
+function StatusBar({ active, punted, completed, failed }: { active: number; punted: number; completed: number; failed: number }) {
   const total = active + punted + completed + failed;
   if (total === 0) return null;
 
-  const size = 18;
-  const radius = 9;
-  const cx = size / 2;
-  const cy = size / 2;
-
-  const activeAngle = (active / total) * 360;
-  const puntedAngle = (punted / total) * 360;
-  const completedAngle = (completed / total) * 360;
-
-  const polarToCartesian = (angle: number) => {
-    const rad = (angle - 90) * Math.PI / 180;
-    return {
-      x: cx + radius * Math.cos(rad),
-      y: cy + radius * Math.sin(rad)
-    };
-  };
-
-  const createArc = (startAngle: number, endAngle: number) => {
-    if (endAngle - startAngle >= 360) {
-      return `M ${cx} ${cy - radius} A ${radius} ${radius} 0 1 1 ${cx - 0.001} ${cy - radius}`;
-    }
-    const start = polarToCartesian(startAngle);
-    const end = polarToCartesian(endAngle);
-    const largeArc = endAngle - startAngle > 180 ? 1 : 0;
-    return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
-  };
-
-  let currentAngle = 0;
-  const segments = [];
-
-  if (active > 0) {
-    segments.push({ path: createArc(currentAngle, currentAngle + activeAngle), color: 'rgba(255, 255, 255, 0)' });
-    currentAngle += activeAngle;
-  }
-  if (punted > 0) {
-    segments.push({ path: createArc(currentAngle, currentAngle + puntedAngle), color: 'rgba(251, 191, 36, 0.8)' }); // Yellow/amber
-    currentAngle += puntedAngle;
-  }
-  if (completed > 0) {
-    segments.push({ path: createArc(currentAngle, currentAngle + completedAngle), color: 'rgba(52, 211, 153, 0.8)' });
-    currentAngle += completedAngle;
-  }
-  if (failed > 0) {
-    segments.push({ path: createArc(currentAngle, 360), color: 'rgba(255, 59, 48, 0.8)' });
-  }
+  const getPct = (val: number) => (val / total) * 100;
 
   return (
-    <svg width={size} height={size} className={styles.miniPieChart}>
-      {segments.map((seg, i) => (
-        <path key={i} d={seg.path} fill={seg.color} />
-      ))}
-    </svg>
+    <div className={styles.statusBar}>
+      <div className={styles.statusSegment} style={{ width: `${getPct(active)}%`, backgroundColor: 'rgba(255, 255, 255, 0.6)' }} />
+      <div className={styles.statusSegment} style={{ width: `${getPct(completed)}%`, backgroundColor: 'rgba(52, 211, 153, 0.8)' }} />
+      <div className={styles.statusSegment} style={{ width: `${getPct(punted)}%`, backgroundColor: 'rgba(251, 191, 36, 0.8)' }} />
+      <div className={styles.statusSegment} style={{ width: `${getPct(failed)}%`, backgroundColor: 'rgba(255, 59, 48, 0.8)' }} />
+    </div>
   );
 }
 
@@ -1199,7 +1156,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
               {viewMode === 'day' && (
                 <div className={styles.todoCategoryHeader}>
                   <span>Life</span>
-                  <MiniPieChart {...getCountsForCategory(lifeTasks)} />
+                  <StatusBar {...getCountsForCategory(lifeTasks)} />
                 </div>
               )}
               <form onSubmit={(e) => addTask(e, dateStr, 'life')} className={styles.todoInputFormSmall}>
@@ -1229,7 +1186,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
               {viewMode === 'day' && (
                 <div className={styles.todoCategoryHeader}>
                   <span>Work</span>
-                  <MiniPieChart {...getCountsForCategory(workTasks)} />
+                  <StatusBar {...getCountsForCategory(workTasks)} />
                 </div>
               )}
               <form onSubmit={(e) => addTask(e, dateStr, 'work')} className={styles.todoInputFormSmall}>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import { HabitTracker } from './components/habits/HabitTracker';
-import { Todos } from './components/today/Todos';
+import { Todos } from './components/todos/Todos';
 import { Diary } from './components/journal/Diary';
 import { Next } from './components/grow/Next';
 import { Lists } from './components/lists/Lists';

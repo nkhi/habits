@@ -142,7 +142,8 @@
 }
 
 .todoDate:global(.today) {
-  color: #007AFF;
+  /* color: #007AFF; */
+  color: #00955b;
 }
 
 .todoDayName {
@@ -151,14 +152,21 @@
   font-weight: 500;
 }
 
-.miniPieChart {
-  flex-shrink: 0;
-  opacity: 0.5;
+.statusBar {
+  width: 100px;
+  height: 6px;
+  display: flex;
+  /* background: rgba(255, 255, 255, 0.1); */ /* kept transparent as per request */
+  border-radius: 999px;
+  overflow: hidden;
   margin-right: 13px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06); /* Slight track to show bounds, delete if unwanted */
 }
 
-.miniPieChart:hover {
-  opacity: 1;
+.statusSegment {
+  height: 100%;
+  transition: width 0.3s ease;
 }
 
 .todoItems {

@@ -19,7 +19,7 @@ type TabType = 'habits' | 'todos' | 'logs' | 'memos' | 'next' | 'lists' | 'dayli
 
 // Detect work mode from URL query params (?mode=work)
 const urlParams = new URLSearchParams(window.location.search);
-const WORK_MODE = urlParams.get('mode') === 'work';
+const WORK_MODE = urlParams.get('mode') === 'work' || urlParams.has('w');
 
 // Component to wire up error reporting
 function ErrorReporterSetup() {

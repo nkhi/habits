@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { Calendar, Trash, X, Ghost, CaretDown } from '@phosphor-icons/react';
+import { Calendar, Trash, X, Ghost, CaretDown, SpinnerGap } from '@phosphor-icons/react';
 import { DateUtility } from '../../utils';
 import type { Task } from '../../types';
 import { GRAVEYARD_CONTAINER_ID } from '../../hooks/useTaskDragAndDrop';
@@ -14,6 +14,8 @@ interface GraveyardProps {
     onClose: () => void;
     onResurrect: (taskId: string, targetDate: string) => void;
     onDelete: (taskId: string) => void;
+    isLoading?: boolean;
+    workMode?: boolean;
 }
 
 /**
@@ -21,7 +23,16 @@ interface GraveyardProps {
  * Tasks are grouped by category (life/work) with collapsible accordions.
  * Now acts as a droppable target for drag-and-drop.
  */
-export function Graveyard({ isOpen, tasks, isOverGraveyard = false, onClose, onResurrect, onDelete }: GraveyardProps) {
+export function Graveyard({
+    isOpen,
+    tasks,
+    isOverGraveyard = false,
+    onClose,
+    onResurrect,
+    onDelete,
+    isLoading = false,
+    workMode = false
+}: GraveyardProps) {
     const [lifeExpanded, setLifeExpanded] = useState(true);
     const [workExpanded, setWorkExpanded] = useState(true);
 
@@ -46,14 +57,32 @@ export function Graveyard({ isOpen, tasks, isOverGraveyard = false, onClose, onR
                 ref={setNodeRef}
                 className={`${styles.graveyardList} ${showDropIndicator ? styles.dropTarget : ''}`}
             >
-                {tasks.length === 0 ? (
+                {isLoading ? (
+                    <div className={styles.loadingContainer}>
+                        <SpinnerGap size={24} className={styles.spinner} />
+                    </div>
+                ) : tasks.length === 0 ? (
                     <div className={styles.graveyardEmpty}>
                         <Ghost size={32} weight="duotone" className={styles.graveyardEmptyIcon} />
                         <span className={styles.graveyardEmptyText}>
                             {showDropIndicator ? 'Drop here to shelve' : 'No tasks'}
                         </span>
                     </div>
+                ) : workMode ? (
+                    // Work Mode: Simple flat list of ONLY work tasks
+                    <div className={styles.categoryTasks}>
+                        {workTasks.map(task => (
+                            <DraggableTask key={task.id} task={task}>
+                                <GraveyardTask
+                                    task={task}
+                                    onResurrect={onResurrect}
+                                    onDelete={onDelete}
+                                />
+                            </DraggableTask>
+                        ))}
+                    </div>
                 ) : (
+                    // Normal Mode: Accordions for Life/Work
                     <>
                         {/* Life Accordion */}
                         {lifeTasks.length > 0 && (

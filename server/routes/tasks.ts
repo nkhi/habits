@@ -539,6 +539,18 @@ router.post('/tasks/batch/reorder', async (req: Request<object, object, BatchReo
 // Graveyard Endpoints
 // ============================================
 
+// Get work-only graveyarded tasks
+router.get('/tasks/graveyard/work', async (_req: Request, res: Response) => {
+  try {
+    const result = await db.query<DbTask>("SELECT * FROM tasks WHERE date IS NULL AND category = 'work' ORDER BY created_at DESC");
+    const tasks = result.rows.map(dbTaskToTask);
+    res.json(tasks);
+  } catch (e) {
+    const error = e as Error;
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all graveyarded tasks (date IS NULL)
 router.get('/tasks/graveyard', async (_req: Request, res: Response) => {
   try {

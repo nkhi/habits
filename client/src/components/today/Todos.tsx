@@ -17,7 +17,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { getTasks, getWorkTasks, getTasksForWeek, createTask, updateTask, deleteTask as apiDeleteTask, batchPuntTasks, batchFailTasks, batchGraveyardTasks, reorderTask, getGraveyardTasks, graveyardTask as apiGraveyardTask, resurrectTask as apiResurrectTask } from '../../api/tasks';
+import { getTasks, getWorkTasks, getTasksForWeek, createTask, updateTask, deleteTask as apiDeleteTask, batchPuntTasks, batchFailTasks, batchGraveyardTasks, reorderTask, getGraveyardTasks, getWorkGraveyardTasks, graveyardTask as apiGraveyardTask, resurrectTask as apiResurrectTask } from '../../api/tasks';
 import type { Task } from '../../types';
 import { generateId, DateUtility } from '../../utils';
 import { getOrderBefore, sortByOrder } from '../../utils/orderUtils';
@@ -395,6 +395,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
 
   // Graveyard state
   const [isGraveyardOpen, setIsGraveyardOpen] = useState(false);
+  const [isGraveyardLoading, setIsGraveyardLoading] = useState(false);
   const [graveyardTasks, setGraveyardTasks] = useState<Task[]>([]);
 
   // Week View state
@@ -534,11 +535,16 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
   }, [viewMode, weekDates]);
 
   async function loadGraveyardTasks() {
+    setIsGraveyardLoading(true);
     try {
-      const data = await getGraveyardTasks(apiBaseUrl);
+      const data = workMode
+        ? await getWorkGraveyardTasks(apiBaseUrl)
+        : await getGraveyardTasks(apiBaseUrl);
       setGraveyardTasks(data || []);
     } catch (error) {
       console.error('Failed to load graveyard tasks:', error);
+    } finally {
+      setIsGraveyardLoading(false);
     }
   }
 
@@ -1304,6 +1310,8 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
         onClose={() => setIsGraveyardOpen(false)}
         onResurrect={resurrectFromGraveyard}
         onDelete={deleteGraveyardTask}
+        isLoading={isGraveyardLoading}
+        workMode={workMode}
       />
 
       <DragOverlay>

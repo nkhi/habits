@@ -153,6 +153,13 @@ export async function getGraveyardTasks(baseUrl: string): Promise<Task[]> {
   return response.json();
 }
 
+// Get work-only graveyarded tasks
+export async function getWorkGraveyardTasks(baseUrl: string): Promise<Task[]> {
+  const response = await fetchWithErrorReporting(`${baseUrl}/tasks/graveyard/work`);
+  if (!response.ok) throw new Error('Failed to fetch work graveyard tasks');
+  return response.json();
+}
+
 // Move a task to the graveyard (set date = null)
 export async function graveyardTask(baseUrl: string, id: string): Promise<Task> {
   const response = await fetchWithErrorReporting(`${baseUrl}/tasks/${id}/graveyard`, {

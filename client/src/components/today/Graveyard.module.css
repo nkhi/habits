@@ -228,3 +228,22 @@
   background: rgba(255, 255, 255, 0.08);
   margin: 8px 0;
 }
+
+/* Spinner Animation */
+.loadingContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 100px;
+}
+
+.spinner {
+    color: rgba(255, 255, 255, 0.4);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

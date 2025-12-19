@@ -1,6 +1,6 @@
 import React from 'react';
 import { DateUtility } from '../../utils';
-import { CaretLeft, CaretRight, StrategyIcon, Ghost, Circle } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, StrategyIcon, Ghost, Circle, Plant, Briefcase, LadderIcon } from '@phosphor-icons/react';
 import type { DayWeekColumnData } from '../shared/DayWeek';
 import styles from './WeekView.module.css';
 import dayWeekStyles from '../shared/DayWeek.module.css';
@@ -14,6 +14,8 @@ interface WeekViewProps {
     onClose: () => void;
     onGraveyardClick?: () => void;
     isGraveyardOpen?: boolean;
+    weekCategory?: 'life' | 'work';
+    onCategoryChange?: (category: 'life' | 'work') => void;
 }
 
 export function WeekView({
@@ -24,12 +26,18 @@ export function WeekView({
     onCurrentWeek,
     onClose,
     onGraveyardClick,
-    isGraveyardOpen
-}: WeekViewProps) {
+    isGraveyardOpen,
+    customGridTemplate,
+    weekCategory,
+    onCategoryChange
+}: WeekViewProps & { customGridTemplate?: string }) {
 
     return (
         <div className={styles.weekViewContainer}>
-            <div className={styles.weekColumns}>
+            <div
+                className={styles.weekColumns}
+                style={customGridTemplate ? { gridTemplateColumns: customGridTemplate } : undefined}
+            >
                 {weekDates.map(date => {
                     const dateStr = DateUtility.formatDate(date);
                     const isToday = DateUtility.isToday(date);
@@ -62,6 +70,22 @@ export function WeekView({
                 >
                     <Ghost weight="duotone" size={20} />
                     <span>Grave</span>
+                </button>
+            )}
+
+
+            {/* 3. Category Toggle - Right of Week Button */}
+            {onCategoryChange && weekCategory && (
+                <button
+                    className={`${styles.modeToggleBtn} ${weekCategory === 'work' ? styles.workActive : styles.lifeActive}`}
+                    onClick={() => onCategoryChange(weekCategory === 'life' ? 'work' : 'life')}
+                    title={`Switch to ${weekCategory === 'life' ? 'Work' : 'Life'} Mode`}
+                >
+                    {weekCategory === 'life' ? (
+                        <LadderIcon weight="duotone" size={20} />
+                    ) : (
+                        <Briefcase weight="fill" size={20} />
+                    )}
                 </button>
             )}
 

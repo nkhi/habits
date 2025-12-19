@@ -92,6 +92,7 @@
 /* Floating Controls for Week View */
 
 /* Active State for Week Button (matches Graveyard active) */
+/* Active State for Week Button (matches Graveyard active) */
 .weekActiveBtn {
   opacity: 1 !important;
   background: rgba(46, 22, 103, 0.3) !important;
@@ -105,6 +106,53 @@
 
 .weekActiveBtn svg {
   color: #A78BFA;
+}
+
+.modeToggleBtn {
+  position: fixed;
+  bottom: 24px;
+  left: 130px; /* Right of the Week button (~100px width + 24px + gap) */
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  z-index: 100;
+  animation: slideUp 0.3s ease;
+  opacity: 1; /* Always active/visible as it indicates state */
+  width: 44px; /* Fixed width for icon-only square look */
+  height: 38px; /* Match height of other buttons (38px = 20px icon + 16px pad + 2px border) */
+}
+
+.modeToggleBtn:hover {
+  transform: translateY(-2px);
+  background: black;
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.modeToggleBtn.workActive {
+  color: #A78BFA;
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(46, 22, 103, 0.3);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.1);
+}
+
+.modeToggleBtn.lifeActive {
+  color: #34D399; /* Emerald 400 */
+  border-color: rgba(52, 211, 153, 0.3);
+  background: rgba(6, 78, 59, 0.3); /* Dark green bg */
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.1);
 }
 
 /* Navigation Pill - Replaces "Today" button position */
@@ -123,6 +171,14 @@
   padding: 0 4px; /* Reduced vertical padding on container, let items define hit area */
   height: 38px;   /* Explicit height to match typical button size (20px icon + 16px pad + 2px border approx) */
   box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.weekNavPill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: black;
 }
 
 .navArrowBtn {
@@ -141,7 +197,14 @@
 
 .navArrowBtn:hover {
   color: white;
-  background: rgba(255, 255, 255, 0.1);
+}
+
+.navArrowBtn svg {
+  transition: transform 0.2s ease;
+}
+
+.navArrowBtn:hover svg {
+  transform: scale(1.2);
 }
 
 .navLabelBtn {
@@ -158,7 +221,7 @@
 }
 
 .navLabelBtn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  /* Removed background change */
 }
 
 .navDotIcon {
@@ -168,10 +231,12 @@
 
 .navLabelBtn:hover .navDotIcon {
   color: white;
-  transform: scale(1.2);
+  transform: scale(1.4);
 }
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+

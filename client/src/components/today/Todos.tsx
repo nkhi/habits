@@ -390,7 +390,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
   const [tasks, setTasks] = useState<Record<string, Task[]>>({});
   const [newTaskTexts, setNewTaskTexts] = useState<Record<string, string>>({});
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
-  const [weekCategory] = useState<TaskCategory>(workMode ? 'work' : 'life');
+  const [weekCategory, setWeekCategory] = useState<TaskCategory>(workMode ? 'work' : 'life');
   const [expandedAccordions, setExpandedAccordions] = useState<Record<string, boolean>>({});
 
   // Graveyard state
@@ -428,6 +428,11 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
 
     setWeekDates(dates);
   }, [weekStart, workMode]);
+
+  // Sync category with work mode
+  useEffect(() => {
+    setWeekCategory(workMode ? 'work' : 'life');
+  }, [workMode]);
 
   const handlePrevWeek = () => {
     const newStart = new Date(weekStart);
@@ -1228,20 +1233,37 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
   // Main Render
   // ----------------------------------------
 
-  if (viewMode === 'week') {
-    return (
-      <WeekView
-        renderColumn={renderTodoColumn}
-        weekDates={weekDates}
-        onPrevWeek={handlePrevWeek}
-        onNextWeek={handleNextWeek}
-        onCurrentWeek={handleCurrentWeek}
-        onClose={() => setViewMode('day')}
-        onGraveyardClick={() => setIsGraveyardOpen(prev => !prev)}
-        isGraveyardOpen={isGraveyardOpen}
-      />
-    );
-  }
+  // Calculate custom grid template for work mode
+  const getGridTemplate = () => {
+    // Logic: Past days with NO active tasks -> 0.4fr
+    //        Today & Future -> 1fr
+    //        Past days WITH active tasks -> 1fr
+
+    const todayStr = DateUtility.formatDate(new Date());
+
+    // We need to iterate over weekDates to build the string
+    const frValues = weekDates.map(date => {
+      const dateStr = DateUtility.formatDate(date);
+
+      // Future or Today: Always 1fr
+      if (dateStr >= todayStr) return '1fr';
+
+      // Past day: check if has active tasks IN THE CURRENT CATEGORY
+      const dayTasks = tasks[dateStr] || [];
+      const relevantTasks = dayTasks.filter(t =>
+        weekCategory === 'life'
+          ? (!t.category || t.category === 'life')
+          : t.category === 'work'
+      );
+
+      const { active, punted } = getCountsForCategory(relevantTasks);
+      const hasActiveTasks = (active > 0 || punted > 0);
+
+      return hasActiveTasks ? '1fr' : '0.4fr';
+    });
+
+    return frValues.join(' ');
+  };
 
   return (
     <DndContext
@@ -1249,15 +1271,32 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
       collisionDetection={closestCenter}
       {...handlers}
     >
-      <DayWeek
-        renderColumn={renderTodoColumn}
-        className={styles.todosScrollContainer}
-        columnClassName={styles.todoColumn}
-        onMoreClick={() => setViewMode('week')}
-        moreOverride="Week"
-        onGraveyardClick={() => setIsGraveyardOpen(prev => !prev)}
-        isGraveyardOpen={isGraveyardOpen}
-      />
+      {viewMode === 'week' ? (
+        <WeekView
+          renderColumn={renderTodoColumn}
+          weekDates={weekDates}
+          onPrevWeek={handlePrevWeek}
+          onNextWeek={handleNextWeek}
+          onCurrentWeek={handleCurrentWeek}
+          onClose={() => setViewMode('day')}
+          onGraveyardClick={() => setIsGraveyardOpen(prev => !prev)}
+          isGraveyardOpen={isGraveyardOpen}
+          customGridTemplate={getGridTemplate()}
+          weekCategory={weekCategory}
+          onCategoryChange={!workMode ? setWeekCategory : undefined}
+        />
+      ) : (
+        <DayWeek
+          renderColumn={renderTodoColumn}
+          className={styles.todosScrollContainer}
+          columnClassName={styles.todoColumn}
+          onMoreClick={() => setViewMode('week')}
+          moreOverride="Week"
+          onGraveyardClick={() => setIsGraveyardOpen(prev => !prev)}
+          isGraveyardOpen={isGraveyardOpen}
+        />
+      )}
+
       <Graveyard
         isOpen={isGraveyardOpen}
         tasks={graveyardTasks}
@@ -1266,6 +1305,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
         onResurrect={resurrectFromGraveyard}
         onDelete={deleteGraveyardTask}
       />
+
       <DragOverlay>
         {activeTask ? (
           <TaskDragOverlay task={activeTask}>

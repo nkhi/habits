@@ -1,6 +1,8 @@
 # 🌳 Start
 
-Start aka Start Menu is my command center for habits, daily todos, notes, journals, lists, and goals. I use this as the "open" tab on my personal computer. It also makes it easy to access my calendar, my budgetting app, Linear, and Perplexity. I also integrated Loom, and then replaced it with Screenity, to record weekly vlogs. 
+Start aka Start Menu is my personal dashboard for: Habits, Todos, Memos, Journals, Lists, and Goals. 
+
+I serve this on my local network and access it across different devices. There's also a work-mode with restricted data fetching. I remixed [Daylight](https://github.com/bakkenbaeck/daylight-web) as a screensaver. I also integrated the Loom SDK to record weekly vlogs. This app exists to make it easy to iterate on *how* I organize myself. Ideally, building a bespoke UX and feature set will encourage consistency w.r.t reflection and personal growth. 
 
 ## Features
 
@@ -20,9 +22,12 @@ Daily task management separated by **Life** and **Work**. Inspired by [Tweek](ht
 ![todos](assets/todos.png)
 ![todos](assets/todos-week.png)
 
+- **Drag and drop** - easily move tasks between status accordions, or to the graveyard
 - **Easy task punting** - move incomplete tasks to the next day
+- **Days punted counter** - display how many days I've procrastinated lol
+- **Task Graveyard** - persist tasks without being assigned to a date for later
 - **Status sorting** - unfinished tasks always appear first
-- **Work life balance** - lol. Tasks are split into two columns, life and work. When `?mode=work` is added to the URL, only work tasks are shown/fetched.
+- **Work life balance** - lol. Tasks are split into two columns: life and work. When `?w` is added to the URL, only work tasks are shown/fetched.
 
 ### 💭 **Memos**
 Integrated [Memos](https://github.com/usememos/memos) as an iFrame for quick thoughts and notes. Better than a notes app where everything gets lost. Memos has search, hashtags, date-filters, and more.

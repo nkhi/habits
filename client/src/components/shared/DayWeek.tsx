@@ -8,6 +8,7 @@ export interface DayWeekColumnData {
   dateStr: string;
   isToday: boolean;
   isFocused: boolean;
+  isShrunk?: boolean;
 }
 
 interface DayWeekProps {

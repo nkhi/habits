@@ -146,6 +146,11 @@
   color: #00955b;
 }
 
+.shrunkDate {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
 .todoDayName {
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.4);

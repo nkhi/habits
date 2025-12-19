@@ -1130,7 +1130,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
   // Column Rendering
   // ----------------------------------------
 
-  const renderTodoColumn = ({ date, dateStr, isToday }: DayWeekColumnData) => {
+  const renderTodoColumn = ({ date, dateStr, isToday, isShrunk }: DayWeekColumnData) => {
     const dayTasks = tasks[dateStr] || [];
 
     const lifeTasks = dayTasks.filter(t => !t.category || t.category === 'life');
@@ -1142,8 +1142,11 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
     return (
       <>
         <div className={styles.todoColumnHeader}>
-          <span className={`${styles.todoDate} ${isToday ? 'today' : ''}`}>
-            {date.toLocaleDateString('en-US', { weekday: viewMode === 'week' ? 'short' : 'long' })}, {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          <span className={`${styles.todoDate} ${isToday ? 'today' : ''} ${isShrunk ? styles.shrunkDate : ''}`}>
+            {isShrunk
+              ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : <>{date.toLocaleDateString('en-US', { weekday: viewMode === 'week' ? 'short' : 'long' })}, {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</>
+            }
           </span>
           {/* <span className={styles.todoDayName}>
             {date.toLocaleDateString('en-US', { weekday: 'short' })}

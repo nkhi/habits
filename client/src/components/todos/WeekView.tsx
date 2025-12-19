@@ -38,12 +38,18 @@ export function WeekView({
                 className={styles.weekColumns}
                 style={customGridTemplate ? { gridTemplateColumns: customGridTemplate } : undefined}
             >
-                {weekDates.map(date => {
+                {weekDates.map((date, index) => {
                     const dateStr = DateUtility.formatDate(date);
                     const isToday = DateUtility.isToday(date);
                     return (
                         <div key={dateStr} className={`${styles.weekColumn} ${isToday ? 'today' : ''}`}>
-                            {renderColumn({ date, dateStr, isToday, isFocused: false })}
+                            {renderColumn({
+                                date,
+                                dateStr,
+                                isToday,
+                                isFocused: false,
+                                isShrunk: customGridTemplate ? customGridTemplate.split(' ')[index] === '0.4fr' : false
+                            })}
                         </div>
                     );
                 })}

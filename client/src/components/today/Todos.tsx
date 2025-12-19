@@ -390,7 +390,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
   const [tasks, setTasks] = useState<Record<string, Task[]>>({});
   const [newTaskTexts, setNewTaskTexts] = useState<Record<string, string>>({});
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
-  const [weekCategory, setWeekCategory] = useState<TaskCategory>('life');
+  const [weekCategory, setWeekCategory] = useState<TaskCategory>(workMode ? 'work' : 'life');
   const [expandedAccordions, setExpandedAccordions] = useState<Record<string, boolean>>({});
 
   // Graveyard state
@@ -1093,7 +1093,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
       <>
         <div className={styles.todoColumnHeader}>
           <span className={`${styles.todoDate} ${isToday ? 'today' : ''}`}>
-            {date.toLocaleDateString('en-US', { weekday: 'long' })}, {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {date.toLocaleDateString('en-US', { weekday: viewMode === 'week' ? 'short' : 'long' })}, {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
           {/* <span className={styles.todoDayName}>
             {date.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -1176,21 +1176,24 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
         currentDate={new Date()}
         onClose={() => setViewMode('day')}
         onWeekChange={loadWeekTasks}
+        workMode={workMode}
         headerControls={
-          <div className={styles.weekCategoryToggle}>
-            <button
-              className={`${styles.toggleBtn} ${weekCategory === 'life' ? styles.active : ''}`}
-              onClick={() => setWeekCategory('life')}
-            >
-              Life
-            </button>
-            <button
-              className={`${styles.toggleBtn} ${weekCategory === 'work' ? styles.active : ''}`}
-              onClick={() => setWeekCategory('work')}
-            >
-              Work
-            </button>
-          </div>
+          !workMode && (
+            <div className={styles.weekCategoryToggle}>
+              <button
+                className={`${styles.toggleBtn} ${weekCategory === 'life' ? styles.active : ''}`}
+                onClick={() => setWeekCategory('life')}
+              >
+                Life
+              </button>
+              <button
+                className={`${styles.toggleBtn} ${weekCategory === 'work' ? styles.active : ''}`}
+                onClick={() => setWeekCategory('work')}
+              >
+                Work
+              </button>
+            </div>
+          )
         }
       />
     );

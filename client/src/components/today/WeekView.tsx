@@ -10,9 +10,10 @@ interface WeekViewProps {
     onClose: () => void;
     onWeekChange: (start: Date, end: Date) => void;
     headerControls?: React.ReactNode;
+    workMode?: boolean;
 }
 
-export function WeekView({ renderColumn, currentDate, onClose, onWeekChange, headerControls }: WeekViewProps) {
+export function WeekView({ renderColumn, currentDate, onClose, onWeekChange, headerControls, workMode = false }: WeekViewProps) {
     const [weekStart, setWeekStart] = useState<Date>(() => {
         // Calculate start of week (Sunday)
         const d = new Date(currentDate);
@@ -25,19 +26,28 @@ export function WeekView({ renderColumn, currentDate, onClose, onWeekChange, hea
     const [weekDates, setWeekDates] = useState<Date[]>([]);
 
     useEffect(() => {
-        const dates = [];
+        let dates = [];
         for (let i = 0; i < 7; i++) {
             const d = new Date(weekStart);
             d.setDate(d.getDate() + i);
             dates.push(d);
         }
+
+        // Filter out weekends for work mode (Monday-Friday only)
+        if (workMode) {
+            dates = dates.filter(d => {
+                const day = d.getDay();
+                return day !== 0 && day !== 6; // Exclude Sunday (0) and Saturday (6)
+            });
+        }
+
         setWeekDates(dates);
 
         // Notify parent of range change
         const start = dates[0];
-        const end = dates[6];
+        const end = dates[dates.length - 1];
         onWeekChange(start, end);
-    }, [weekStart]);
+    }, [weekStart, workMode]);
 
     const handlePrevWeek = () => {
         const newStart = new Date(weekStart);

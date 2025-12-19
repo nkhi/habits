@@ -617,7 +617,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
   // Task Rendering
   // ----------------------------------------
 
-  const renderTaskItem = useCallback((task: Task, dateStr: string) => {
+  const renderTaskItem = (task: Task, dateStr: string) => {
     const taskState = getTaskState(task);
 
     return (
@@ -666,7 +666,7 @@ export function Todos({ apiBaseUrl, workMode = false }: TodosProps) {
         </div>
       </DraggableTask>
     );
-  }, []);
+  };
 
   const renderTasksWithAccordions = (
     taskList: Task[],

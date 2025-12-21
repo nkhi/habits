@@ -2,6 +2,7 @@ import { CalendarCheck, ListChecks, TipJarIcon, LightbulbIcon, ListDashes, TreeI
 import { ServerStatus } from './ServerStatus';
 import styles from './Navigation.module.css';
 import { useDaylight } from '../daylight/DaylightContext';
+import { NookButton } from '../nook/NookButton';
 
 export type TabType = 'habits' | 'todos' | 'journal' | 'memos' | 'next' | 'lists' | 'daylight' | 'vlogs';
 
@@ -9,11 +10,10 @@ interface NavigationProps {
     activeTab: TabType;
     lastTab?: TabType;
     onTabChange: (tab: TabType) => void;
-    apiBaseUrl: string;
     workMode?: boolean;
 }
 
-export function Navigation({ activeTab, lastTab, onTabChange, apiBaseUrl, workMode = false }: NavigationProps) {
+export function Navigation({ activeTab, lastTab, onTabChange, workMode = false }: NavigationProps) {
     const { themeColors } = useDaylight();
 
     const capUrl = import.meta.env.VITE_CAP_URL;
@@ -40,7 +40,9 @@ export function Navigation({ activeTab, lastTab, onTabChange, apiBaseUrl, workMo
                     <SunDim size={20} weight="duotone" />
                 </button>
 
-                <ServerStatus apiBaseUrl={apiBaseUrl} />
+                <NookButton />
+
+                <ServerStatus />
             </div>
 
             <div className={styles.tabSwitcher}>

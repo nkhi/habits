@@ -358,10 +358,52 @@ export function HabitTracker() {
     today.setHours(0, 0, 0, 0);
     let streak = 0;
     let currentDate = new Date(today);
+    let skippedToday = false;
 
     while (currentDate >= CONFIG.startDate) {
       const entry = getEntry(currentDate, habitId);
+
+      // If today has no entry (state 0 or undefined), skip it and start from yesterday
+      if (!skippedToday && currentDate.getTime() === today.getTime()) {
+        if (!entry || entry.state === 0) {
+          currentDate.setDate(currentDate.getDate() - 1);
+          skippedToday = true;
+          continue;
+        }
+      }
+
       if (entry && (entry.state === 1 || entry.state === 3)) {
+        streak++;
+      } else {
+        break;
+      }
+      currentDate.setDate(currentDate.getDate() - 1);
+    }
+
+    return streak;
+  }
+
+  function getFailedStreak(habitId: string): number {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streak = 0;
+    let currentDate = new Date(today);
+    let skippedToday = false;
+
+    while (currentDate >= CONFIG.startDate) {
+      const entry = getEntry(currentDate, habitId);
+
+      // If today has no entry (state 0 or undefined), skip it and start from yesterday
+      if (!skippedToday && currentDate.getTime() === today.getTime()) {
+        if (!entry || entry.state === 0) {
+          currentDate.setDate(currentDate.getDate() - 1);
+          skippedToday = true;
+          continue;
+        }
+      }
+
+      // State 2 = failed (✕)
+      if (entry && entry.state === 2) {
         streak++;
       } else {
         break;
@@ -633,6 +675,7 @@ export function HabitTracker() {
                     <HabitNameCell
                       habit={habit}
                       streak={getCurrentStreak(habit.id)}
+                      failedStreak={getFailedStreak(habit.id)}
                       onMouseEnter={(e, id, comment) => handleHabitNameMouseEnter(id, comment, e)}
                       onMouseLeave={handleHabitNameMouseLeave}
                     />

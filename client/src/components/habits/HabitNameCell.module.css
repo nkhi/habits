@@ -105,3 +105,40 @@
     transform: scale(1);
   }
 }
+
+/* Failed Streak Styles */
+.failedStreakBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  color: #8B5CF6;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 12px;
+  transition: all 0.2s ease;
+}
+
+.failedStreakBadge:hover {
+  transform: scale(1.05);
+}
+
+.failedStreakIcon {
+  width: 12px;
+  height: 12px;
+  color: #8B5CF6;
+  animation: warningPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes warningPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  10% {
+    transform: scale(1.1);
+  }
+  20% {
+    transform: scale(1);
+  }
+}

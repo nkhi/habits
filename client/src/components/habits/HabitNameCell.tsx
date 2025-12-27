@@ -1,5 +1,5 @@
 import React from 'react';
-import { HeartIcon } from '@phosphor-icons/react';
+import { HeartIcon, Warning } from '@phosphor-icons/react';
 import type { Habit } from '../../types';
 import { HabitTimeIcon, HABIT_TIME_CONFIG } from './habitTimeConfig';
 import styles from './HabitNameCell.module.css';
@@ -7,11 +7,12 @@ import styles from './HabitNameCell.module.css';
 interface HabitNameCellProps {
     habit: Habit;
     streak: number;
+    failedStreak: number;
     onMouseEnter: (e: React.MouseEvent, habitId: string, comment?: string | null) => void;
     onMouseLeave: () => void;
 }
 
-export function HabitNameCell({ habit, streak, onMouseEnter, onMouseLeave }: HabitNameCellProps) {
+export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMouseLeave }: HabitNameCellProps) {
     // Parsing Logic
     // Allowed if defaultTime is 'routine' OR id is in range 32-38
     const isRoutine = habit.defaultTime === 'routine';
@@ -93,6 +94,15 @@ export function HabitNameCell({ habit, streak, onMouseEnter, onMouseLeave }: Hab
                             <HeartIcon size={12} weight="fill" />
                         </span>
                         <span>{streak}</span>
+                    </span>
+                )}
+
+                {failedStreak > 0 && (
+                    <span className={styles.failedStreakBadge}>
+                        <span className={styles.failedStreakIcon}>
+                            <Warning size={12} weight="fill" />
+                        </span>
+                        <span>{failedStreak}</span>
                     </span>
                 )}
             </div>

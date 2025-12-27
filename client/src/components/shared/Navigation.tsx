@@ -3,6 +3,7 @@ import { ServerStatus } from './ServerStatus';
 import styles from './Navigation.module.css';
 import { useDaylight } from '../daylight/DaylightContext';
 import { NookButton } from '../nook/NookButton';
+import { useNavHotkeys } from '../../hooks/useNavHotkeys';
 
 export type TabType = 'habits' | 'todos' | 'journal' | 'memos' | 'next' | 'lists' | 'daylight' | 'vlogs';
 
@@ -15,6 +16,7 @@ interface NavigationProps {
 
 export function Navigation({ activeTab, lastTab, onTabChange, workMode = false }: NavigationProps) {
     const { themeColors } = useDaylight();
+    useNavHotkeys({ onTabChange, workMode });
 
     const capUrl = import.meta.env.VITE_CAP_URL;
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { getHabits, getEntries, saveEntry } from '../../api/habits';
+import { getHabits, getEntries, saveEntry, reorderHabit } from '../../api/habits';
 import { getVlogsBatch, saveVlog } from '../../api/vlogs';
 import type { Habit, HabitEntry, Vlog } from '../../types';
 import { DateUtility, getGrade, generateId } from '../../utils';
@@ -12,6 +12,7 @@ import { VideoCameraIcon } from '@phosphor-icons/react';
 import styles from './HabitTracker.module.css';
 import { HabitNameCell } from './HabitNameCell';
 import { CommentPanel } from './CommentPanel';
+import { ReorderOverlay } from './ReorderOverlay';
 
 const CONFIG = {
   startDate: new Date('2025-11-09T00:00:00'),
@@ -47,6 +48,10 @@ export function HabitTracker() {
   const [hoveredHabitId, setHoveredHabitId] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
+
+  // Reorder state
+  const [reorderingHabit, setReorderingHabit] = useState<Habit | null>(null);
+  const [reorderPosition, setReorderPosition] = useState<{ x: number; y: number } | null>(null);
 
   // Entry comment hook
   const handleEntriesChange = useCallback((updater: (prev: Map<string, HabitEntry>) => Map<string, HabitEntry>) => {
@@ -545,6 +550,32 @@ export function HabitTracker() {
     setTooltipPosition(null);
   }, []);
 
+  // Reorder handlers
+  const handleReorderStart = useCallback((habit: Habit, position: { x: number; y: number }) => {
+    setReorderingHabit(habit);
+    setReorderPosition(position);
+  }, []);
+
+  const handleReorderSelect = useCallback(async (targetHabitId: string | null) => {
+    if (!reorderingHabit) return;
+
+    try {
+      await reorderHabit(reorderingHabit.id, targetHabitId);
+      // Refresh habits to get new order
+      const updatedHabits = await getHabits();
+      setHabits(updatedHabits);
+    } catch (error) {
+      console.error('Failed to reorder habit:', error);
+    } finally {
+      setReorderingHabit(null);
+    }
+  }, [reorderingHabit]);
+
+  const handleReorderClose = useCallback(() => {
+    setReorderingHabit(null);
+    setReorderPosition(null);
+  }, []);
+
   if (isLoading || habits.length === 0 || dates.length === 0) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -678,6 +709,7 @@ export function HabitTracker() {
                       failedStreak={getFailedStreak(habit.id)}
                       onMouseEnter={(e, id, comment) => handleHabitNameMouseEnter(id, comment, e)}
                       onMouseLeave={handleHabitNameMouseLeave}
+                      onReorderStart={handleReorderStart}
                     />
                   </td>
                   {weeks.map((week, weekIndex) => {
@@ -881,6 +913,17 @@ export function HabitTracker() {
 
       {/* Comment Panel */}
       {commentPanel && <CommentPanel {...commentPanel} />}
+
+      {/* Reorder Overlay */}
+      {reorderingHabit && reorderPosition && (
+        <ReorderOverlay
+          habits={habits}
+          movingHabit={reorderingHabit}
+          position={reorderPosition}
+          onSelect={handleReorderSelect}
+          onClose={handleReorderClose}
+        />
+      )}
     </>
   );
 }

@@ -108,6 +108,98 @@ router.patch('/habit-entry/:entryId/comment', async (req: Request, res: Response
   }
 });
 
+// Reorder a habit to a new position (place it directly before targetHabitId, or at end if targetHabitId is null)
+router.patch('/habits/:id/reorder', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { targetHabitId } = req.body as { targetHabitId: string | null };
+
+  try {
+    // Use a transaction for atomicity
+    await db.query('BEGIN');
+
+    // Step 1: Get both habits in a single query (or just the moving habit if moving to end)
+    let oldOrder: number | null;
+    let newOrder: number;
+
+    if (targetHabitId === null) {
+      // Moving to end: get moving habit's order and max order in one query
+      const result = await db.query<{ old_order: number | null; max_order: number }>(`
+        SELECT 
+          (SELECT "order" FROM habits WHERE id = $1) as old_order,
+          COALESCE(MAX("order"), 0) as max_order 
+        FROM habits WHERE active = true
+      `, [id]);
+      
+      if (result.rows.length === 0) {
+        await db.query('ROLLBACK');
+        return res.status(404).json({ error: 'Habit not found' });
+      }
+      
+      oldOrder = result.rows[0].old_order;
+      newOrder = result.rows[0].max_order + 1;
+    } else {
+      // Get both habits' orders in a single query
+      const result = await db.query<{ id: string; order: number | null }>(`
+        SELECT id, "order" FROM habits WHERE id = ANY($1)
+      `, [[id, targetHabitId]]);
+      
+      const movingHabit = result.rows.find(r => r.id === id);
+      const targetHabit = result.rows.find(r => r.id === targetHabitId);
+      
+      if (!movingHabit) {
+        await db.query('ROLLBACK');
+        return res.status(404).json({ error: 'Habit not found' });
+      }
+      if (!targetHabit) {
+        await db.query('ROLLBACK');
+        return res.status(404).json({ error: 'Target habit not found' });
+      }
+      if (targetHabit.order === null) {
+        await db.query('ROLLBACK');
+        return res.status(400).json({ error: 'Target habit has no order' });
+      }
+      
+      oldOrder = movingHabit.order;
+      newOrder = targetHabit.order;
+    }
+
+    // Step 2: Early exit if no change needed
+    if (oldOrder === newOrder) {
+      await db.query('COMMIT');
+      return res.json({ ok: true, message: 'No change needed' });
+    }
+
+    // Step 3: Shift other habits and update the moving habit's order
+    if (oldOrder === null || oldOrder > newOrder) {
+      // Moving up: shift habits in [newOrder, oldOrder) up by 1
+      const upperBound = oldOrder ?? 999999;
+      await db.query(`
+        UPDATE habits 
+        SET "order" = "order" + 1 
+        WHERE "order" >= $1 AND "order" < $2 AND id != $3
+      `, [newOrder, upperBound, id]);
+      await db.query(`UPDATE habits SET "order" = $1 WHERE id = $2`, [newOrder, id]);
+    } else {
+      // Moving down: shift habits in (oldOrder, newOrder] down by 1
+      await db.query(`
+        UPDATE habits 
+        SET "order" = "order" - 1 
+        WHERE "order" > $1 AND "order" <= $2 AND id != $3
+      `, [oldOrder, newOrder, id]);
+      newOrder = newOrder - 1;
+      await db.query(`UPDATE habits SET "order" = $1 WHERE id = $2`, [newOrder, id]);
+    }
+
+    await db.query('COMMIT');
+    res.json({ ok: true, newOrder });
+  } catch (e) {
+    await db.query('ROLLBACK');
+    const error = e as Error;
+    console.error('Failed to reorder habit:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Seed/replace HabitConfig (Not typically used in prod, but kept for compatibility)
 router.post('/seed-habits', async (_req: Request, res: Response) => {
   // Skipping implementation as it's destructive and we have real data now

@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import { HeartIcon, Warning } from '@phosphor-icons/react';
 import type { Habit } from '../../types';
 import { HabitTimeIcon, HABIT_TIME_CONFIG } from './habitTimeConfig';
 import styles from './HabitNameCell.module.css';
+
+export interface ReorderPosition {
+    x: number;
+    y: number;
+}
 
 interface HabitNameCellProps {
     habit: Habit;
@@ -10,9 +15,16 @@ interface HabitNameCellProps {
     failedStreak: number;
     onMouseEnter: (e: React.MouseEvent, habitId: string, comment?: string | null) => void;
     onMouseLeave: () => void;
+    onReorderStart?: (habit: Habit, position: ReorderPosition) => void;
 }
 
-export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMouseLeave }: HabitNameCellProps) {
+const LONG_PRESS_DURATION = 500; // ms
+
+export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMouseLeave, onReorderStart }: HabitNameCellProps) {
+    const longPressTimerRef = useRef<number | null>(null);
+    const isLongPressRef = useRef(false);
+    const elementRef = useRef<HTMLDivElement>(null);
+
     // Parsing Logic
     // Allowed if defaultTime is 'routine' OR id is in range 32-38
     const isRoutine = habit.defaultTime === 'routine';
@@ -48,6 +60,37 @@ export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMou
         background: timeConfig.color === 'transparent' ? undefined : `${timeConfig.color}20` // 20 hex = ~12% opacity
     } : undefined;
 
+    // Long press handlers
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        if (e.button !== 0) return; // Only left click
+        isLongPressRef.current = false;
+
+        longPressTimerRef.current = window.setTimeout(() => {
+            isLongPressRef.current = true;
+            if (onReorderStart && elementRef.current) {
+                const rect = elementRef.current.getBoundingClientRect();
+                onReorderStart(habit, {
+                    x: rect.right + 8, // Position to the right of the element
+                    y: rect.top
+                });
+            }
+        }, LONG_PRESS_DURATION);
+    }, [habit, onReorderStart]);
+
+    const handleMouseUp = useCallback(() => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+    }, []);
+
+    const handleMouseLeaveInternal = useCallback(() => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        onMouseLeave();
+    }, [onMouseLeave]);
 
     // Render Logic
     const renderIconArea = () => {
@@ -67,7 +110,14 @@ export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMou
     };
 
     return (
-        <div className={styles.habitName}>
+        <div
+            ref={elementRef}
+            className={styles.habitName}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeaveInternal}
+            style={{ cursor: onReorderStart ? 'grab' : undefined }}
+        >
             {renderIconArea()}
 
             <div className={styles.habitNameText}>
@@ -75,7 +125,6 @@ export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMou
                     <span
                         className={habit.comment ? styles.habitNameWithComment : undefined}
                         onMouseEnter={(e) => onMouseEnter(e, habit.id, habit.comment)}
-                        onMouseLeave={onMouseLeave}
                     >
                         {displayName}
                     </span>
@@ -109,3 +158,4 @@ export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMou
         </div>
     );
 }
+

@@ -31,3 +31,17 @@ export async function updateEntryComment(entryId: string, comment: string | null
   });
   if (!response.ok) throw new Error('Failed to update entry comment');
 }
+
+/**
+ * Reorder a habit to be placed before another habit
+ * @param habitId - The habit to move
+ * @param targetHabitId - The habit to place before (null = move to end)
+ */
+export async function reorderHabit(habitId: string, targetHabitId: string | null): Promise<void> {
+  const response = await fetchWithErrorReporting(`${API_BASE_URL}/habits/${habitId}/reorder`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetHabitId })
+  });
+  if (!response.ok) throw new Error('Failed to reorder habit');
+}

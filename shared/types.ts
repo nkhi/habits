@@ -17,6 +17,7 @@ export interface Habit {
   active: boolean;
   createdDate: string;
   comment?: string | null;
+  deadlineTime?: string | null;
 }
 
 export interface HabitEntry {

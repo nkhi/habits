@@ -19,6 +19,7 @@ export interface DbHabit {
   active: boolean | null;
   created_date: Date | null;
   comment: string | null;
+  deadline_time: string | null;
 }
 
 export interface DbEntry {

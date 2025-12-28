@@ -1,5 +1,5 @@
 import React from 'react';
-import { HeartIcon, Warning } from '@phosphor-icons/react';
+import { HeartIcon, Warning, Clock } from '@phosphor-icons/react';
 import type { Habit } from '../../types';
 import { HabitTimeIcon, HABIT_TIME_CONFIG } from './habitTimeConfig';
 import styles from './HabitNameCell.module.css';
@@ -10,9 +10,11 @@ interface HabitNameCellProps {
     failedStreak: number;
     onMouseEnter: (e: React.MouseEvent, habitId: string, comment?: string | null) => void;
     onMouseLeave: () => void;
+    onDeadlineMouseEnter?: (e: React.MouseEvent, deadlineTime: string) => void;
+    onDeadlineMouseLeave?: () => void;
 }
 
-export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMouseLeave }: HabitNameCellProps) {
+export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMouseLeave, onDeadlineMouseEnter, onDeadlineMouseLeave }: HabitNameCellProps) {
     // Parsing Logic
     // Allowed if defaultTime is 'routine' OR id is in range 32-38
     const isRoutine = habit.defaultTime === 'routine';
@@ -88,23 +90,38 @@ export function HabitNameCell({ habit, streak, failedStreak, onMouseEnter, onMou
                     )}
                 </div>
 
-                {streak > 0 && (
-                    <span className={styles.streakBadge}>
-                        <span className={styles.streakIcon}>
-                            <HeartIcon size={12} weight="fill" />
-                        </span>
-                        <span>{streak}</span>
-                    </span>
-                )}
+                <div className={styles.badgesContainer}>
 
-                {failedStreak > 0 && (
-                    <span className={styles.failedStreakBadge}>
-                        <span className={styles.failedStreakIcon}>
-                            <Warning size={12} weight="fill" />
+                    {habit.deadlineTime && (
+                        <span
+                            className={styles.deadlineBadge}
+                            onMouseEnter={(e) => onDeadlineMouseEnter?.(e, habit.deadlineTime!)}
+                            onMouseLeave={onDeadlineMouseLeave}
+                        >
+                            <Clock size={14} weight="regular" />
                         </span>
-                        <span>{failedStreak}</span>
-                    </span>
-                )}
+                    )}
+
+                    {streak > 0 && (
+                        <span className={styles.streakBadge}>
+                            <span className={styles.streakIcon}>
+                                <HeartIcon size={12} weight="fill" />
+                            </span>
+                            <span>{streak}</span>
+                        </span>
+                    )}
+
+                    {failedStreak > 0 && (
+                        <span className={styles.failedStreakBadge}>
+                            <span className={styles.failedStreakIcon}>
+                                <Warning size={12} weight="fill" />
+                            </span>
+                            <span>{failedStreak}</span>
+                        </span>
+                    )}
+
+
+                </div>
             </div>
         </div>
     );

@@ -94,6 +94,17 @@ export interface List {
   order?: string | null;
 }
 
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  all_day: boolean;
+  status: string;
+  html_link: string;
+}
+
 // ============================================
 // Aggregate/Collection Types
 // ============================================
